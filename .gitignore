@@ -1,0 +1,6 @@
+
+*.pyc
+.copilotignor
+.env
+.vscode
+temp_image.png
