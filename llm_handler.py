@@ -15,6 +15,68 @@ from config import load_from_config, DEFAULT_LLM_ENABLED, DEFAULT_LLM_MODEL, DEF
 # Load environment variables from .env file
 dotenv.load_dotenv()
 
+import logging
+from typing import Optional
+
+
+def preprocess_image(image_path: str) -> Optional[Image.Image]:
+    """
+    Validate if the image is suitable for processing.
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        bool: True if image is valid, False otherwise
+    """
+    try:
+        with Image.open(image_path) as img:
+            if img.mode not in ('RGB', 'L'):
+                img = img.convert('RGB')
+            
+            max_dimension = 2048
+            if img.width > max_dimension or img.height > max_dimension:
+                ratio = min(max_dimension / img.width, max_dimension / img.height)
+                new_size = (int(img.width * ratio), int(img.height * ratio))
+                img = img.resize(new_size, Image.Resampling.LANCZOS)
+            
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format='PNG', quality=85)
+            img_byte_arr.seek(0)
+            
+            return Image.open(img_byte_arr)
+
+    except Exception as e:
+        print(f"Image preprocessing failed for {image_path}: {str(e)}")
+        return None
+
+
+
+def encode_image(image_path: str) -> Optional[str]:
+    """Encode image as base64 with proper validation and preprocessing."""
+    try:
+        
+
+        processed_img = preprocess_image(image_path)
+        if processed_img is None:
+            return None
+
+        img_byte_arr = io.BytesIO()
+        processed_img.save(img_byte_arr, format='PNG', quality=85)
+        img_byte_arr.seek(0)
+        base64_encoded = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+
+        try:
+            base64.b64decode(base64_encoded)
+            return base64_encoded
+        except Exception as e:
+            print(f"Base64 validation failed for {image_path}: {str(e)}")
+            return None
+
+    except Exception as e:
+        print(f"Image encoding failed for {image_path}: {str(e)}")
+        return None
+
 class LLMHandler:
     """Handler for interacting with multimodal LLMs using Azure OpenAI"""
     
@@ -23,11 +85,14 @@ class LLMHandler:
         # Load configuration
         self.enabled = load_from_config('llm_enabled', DEFAULT_LLM_ENABLED)
         self.model = load_from_config('llm_model', DEFAULT_LLM_MODEL)
+        # Strip the "azure/" prefix if present
+        if self.model.startswith("azure/"):
+            self.model = self.model.replace("azure/", "")
         self.prompt = load_from_config('llm_prompt', DEFAULT_LLM_PROMPT)
         
         # Azure OpenAI configuration
         self.azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        self.azure_endpoint = os.getenv("AZURE_API_BASE")
+        self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.azure_api_version = os.getenv("AZURE_API_VERSION", "2025-01-01-preview")
         
         print(f"Azure Endpoint: {self.azure_endpoint}")
@@ -35,11 +100,18 @@ class LLMHandler:
         print(f"Azure API Version: {self.azure_api_version}")
         print(f"Model deployment name: {self.model}")
         
+        # Check for missing configuration
+        if not self.azure_endpoint:
+            print("WARNING: AZURE_OPENAI_ENDPOINT environment variable is not set. Please set it in your .env file.")
+        
         # Initialize Azure OpenAI client if enabled
         self.client = None
         if self.enabled and self.azure_api_key and self.azure_endpoint:
+            # Create endpoint URL with deployment name
+            endpoint_url = f"{self.azure_endpoint}/openai/deployments/{self.model}"
+            print(f"Endpoint URL: {endpoint_url}")
             self.client = ChatCompletionsClient(
-                endpoint=self.azure_endpoint,
+                endpoint=endpoint_url,
                 credential=AzureKeyCredential(self.azure_api_key),
                 api_version=self.azure_api_version
             )
@@ -78,7 +150,9 @@ class LLMHandler:
             temp_image_path = "temp_image.png"
             image.save(temp_image_path)
             print(f"Image saved to {temp_image_path}")
-            
+
+            base64_image = encode_image(temp_image_path)
+
             # Use provided prompt or default
             prompt_text = custom_prompt if custom_prompt else self.prompt
             
@@ -87,32 +161,31 @@ class LLMHandler:
             for attempt in range(max_retries):
                 try:
                     # Create the payload with system and user messages
+
                     payload = {
                         "messages": [
                             {
-                                "role": "system", 
-                                "content": "You are an expert image analyst that accurately describes content of images."
+                                "role": "system",
+                                "content": "you are a helpful assistant that can analyze images and provide information about them."
                             },
                             {
                                 "role": "user",
                                 "content": [
-                                    {
-                                        "type": "text",
-                                        "text": prompt_text
-                                    },
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": f"data:image/png;base64,{img_base64}"
-                                        }
-                                    }
-                                ]
+                                            {
+                                                "type": "text",
+                                                "text": prompt_text
+                                            },
+                                            {
+                                                "type": "image_url",
+                                                "image_url": {
+                                                    "url": f"data:image/jpeg;base64,{img_base64}"
+                                                }
+                                            }
+                                        ]
                             }
                         ],
-                        "temperature": 0.7,
-                        "max_tokens": 1000
+                        "max_tokens": 2048
                     }
-                    
                     # Call the API
                     response = self.client.complete(payload)
                     
