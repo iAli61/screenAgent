@@ -4,7 +4,7 @@ Keyboard shortcut handler for ScreenAgent
 import threading
 from typing import Optional, Callable
 
-from .config import Config
+from ..core.config import Config
 
 
 class KeyboardHandler:

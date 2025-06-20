@@ -12,8 +12,8 @@ from typing import Optional, Dict, Any
 from urllib.parse import urlparse, parse_qs
 
 from ..core.config import Config
-from ..core.screenshot_manager import ScreenshotManager
-from ..core.roi_monitor import ROIMonitor
+from ..core.storage import ScreenshotManager
+from ..core.monitoring import ROIMonitor
 from .llm_api import LLMAnalyzer
 
 

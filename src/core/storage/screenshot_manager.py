@@ -17,10 +17,10 @@ except ImportError:
     PIL_AVAILABLE = False
     NUMPY_AVAILABLE = False
 
-from .config import Config
-from .screenshot_capture import ScreenshotCapture
-from .roi_monitor import ROIMonitor
-from .keyboard_handler import KeyboardHandler
+from ..config.config import Config
+from ..capture.screenshot_capture import ScreenshotCapture
+from ..monitoring.roi_monitor import ROIMonitor
+from ...utils.keyboard_handler import KeyboardHandler
 
 
 class ScreenshotManager:

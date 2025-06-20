@@ -6,8 +6,8 @@ import threading
 from typing import Optional, Callable, Dict, Any
 from datetime import datetime
 
-from .config import Config
-from .screenshot_capture import ScreenshotCapture
+from ..config.config import Config
+from ..capture.screenshot_capture import ScreenshotCapture
 
 
 class ROIMonitor:

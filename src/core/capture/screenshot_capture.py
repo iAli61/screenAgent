@@ -9,8 +9,8 @@ import base64
 from typing import Optional, Tuple
 from PIL import Image
 
-from .platform_detection import get_recommended_screenshot_method
-from .config import Config
+from ...utils.platform_detection import get_recommended_screenshot_method
+from ..config.config import Config
 
 
 class ScreenshotCapture:
@@ -431,7 +431,7 @@ class ScreenshotCapture:
 # Legacy functions for backward compatibility
 def take_screenshot(roi: Tuple[int, int, int, int] = None) -> Optional[bytes]:
     """Legacy function for taking screenshots"""
-    from .config import Config
+    from ..config.config import Config
     
     config = Config()
     capture = ScreenshotCapture(config)
@@ -447,7 +447,7 @@ def take_screenshot(roi: Tuple[int, int, int, int] = None) -> Optional[bytes]:
 
 def take_full_screenshot(save_to_temp: bool = False) -> Optional[bytes]:
     """Legacy function for taking full screenshots"""
-    from .config import Config
+    from ..config.config import Config
     
     config = Config()
     capture = ScreenshotCapture(config)

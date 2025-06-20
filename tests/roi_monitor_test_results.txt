@@ -1,0 +1,19 @@
+ROI Monitor refactoring test results: 17/17 passed
+Events received: 1
+PASS: Available detection methods - Found 4 methods: ['size_based', 'hash_based', 'pixel_diff', 'advanced_diff']
+PASS: Create size_based detector - Supports ROI: False
+PASS: Create hash_based detector - Supports ROI: False
+PASS: Create pixel_diff detector - Supports ROI: True
+PASS: Create advanced_diff detector - Supports ROI: True
+PASS: ROI monitor manager initialization - Capture init: True, Monitor init: True
+PASS: Backward compatible ROI monitor - Old interface still works
+PASS: Get status (before monitoring) - Active: False, Method: pixel_diff
+PASS: Start monitoring - ROI: (100, 100, 300, 300)
+PASS: Get status (during monitoring) - Duration: 0h 0m, Cycles: 2
+PASS: Force screenshot - Size: 35 bytes
+PASS: Update settings - New interval: 2.0s
+PASS: Stop monitoring - Final cycles: 3
+PASS: Event system - Received 1 events during test
+PASS: Event dispatcher stats - Handlers: 1, History: 1
+PASS: Implementation comparison - Old init: True, New init: True
+PASS: Enhanced capabilities - Detection methods: 4, Current: pixel_diff

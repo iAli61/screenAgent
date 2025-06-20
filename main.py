@@ -15,11 +15,20 @@ import signal
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
-from src.core.config import Config
-from src.core.screenshot_manager import ScreenshotManager
-from src.core.roi_monitor import ROIMonitor
+# Updated imports for restructured codebase
+import sys
+import os
+
+# For now, use direct imports to avoid complex module loading
+sys.path.append('src')
+sys.path.append('src/core')
+sys.path.append('src/core/config')
+
+from src.core.config.config import Config
+from src.core.storage.screenshot_manager import ScreenshotManager
+from src.core.monitoring.roi_monitor import ROIMonitor
 from src.api.server import ScreenAgentServer
-from src.core.keyboard_handler import KeyboardHandler
+from src.utils.keyboard_handler import KeyboardHandler
 
 
 class ScreenAgentApp:
