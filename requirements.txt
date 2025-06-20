@@ -1,11 +1,23 @@
-numpy>=1.21.0
+# Core dependencies
+numpy>=1.24.0
 Pillow>=9.0.0
-# Screenshot options (at least one is required)
-pyautogui>=0.9.53
-mss>=6.1.0
-# Optional: for keyboard shortcuts
-keyboard>=0.13.5
-# For Azure OpenAI integration
+python-dotenv>=0.19.0
+
+# Screenshot capture options
+# For WSL: Uses PowerShell (no additional dependencies needed)
+# For Linux with GUI: pyautogui>=0.9.53
+# For Linux with root: mss>=6.1.0
+pyautogui>=0.9.53; sys_platform != "linux" or platform_machine != "x86_64"
+mss>=6.1.0; sys_platform == "linux"
+
+# Optional: for keyboard shortcuts (not available in WSL)
+keyboard>=0.13.5; sys_platform != "linux" or "microsoft" not in platform_release
+
+# AI/LLM integration (optional)
 openai>=1.0.0
-python-dotenv>=1.0.0
-azure-ai-inference
+azure-ai-inference>=1.0.0b9
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# black>=22.0.0
+# flake8>=4.0.0

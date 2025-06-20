@@ -1,0 +1,20 @@
+# ScreenAgent Requirements - Optional Features
+# Install these for enhanced functionality
+
+# Environment configuration
+python-dotenv>=0.19.0
+
+# Keyboard shortcuts (requires root on Linux)
+keyboard>=0.13.5
+
+# AI/LLM integration for screenshot analysis
+openai>=1.0.0
+
+# Azure AI integration (beta version - install if using Azure)
+# azure-ai-inference>=1.0.0b9
+
+# Development tools (uncomment if doing development)
+# pytest>=7.0.0
+# black>=22.0.0
+# flake8>=4.0.0
+# mypy>=1.0.0

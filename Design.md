@@ -1,0 +1,612 @@
+# ScreenAgent - System Design & Architecture
+
+## Table of Contents
+1. [System Overview](#system-overview)
+2. [Core Features](#core-features)
+3. [Architecture](#architecture)
+4. [Module Design](#module-design)
+5. [Data Flow](#data-flow)
+6. [Platform Support](#platform-support)
+7. [AI Integration](#ai-integration)
+8. [Web Interface](#web-interface)
+9. [Configuration System](#configuration-system)
+10. [Error Handling & Reliability](#error-handling--reliability)
+11. [Security Considerations](#security-considerations)
+12. [Performance Optimizations](#performance-optimizations)
+13. [Future Enhancements](#future-enhancements)
+
+## System Overview
+
+ScreenAgent is a modern, intelligent screen monitoring application designed to capture and analyze changes within user-defined regions of interest (ROI). The system combines real-time monitoring, AI-powered analysis, and a responsive web interface to provide comprehensive screen activity tracking.
+
+### Core Philosophy
+- **Modular Architecture**: Clean separation of concerns with well-defined interfaces
+- **Cross-Platform Compatibility**: Seamless operation across Linux, Windows, and WSL
+- **Intelligence First**: AI-powered analysis for meaningful insights
+- **User Experience**: Modern, responsive web interface with real-time updates
+- **Reliability**: Robust error handling and graceful degradation
+
+## Core Features
+
+### 1. Region of Interest (ROI) Monitoring
+- **Interactive Selection**: Web-based canvas for precise region selection
+- **Real-time Detection**: Configurable change detection with sensitivity controls
+- **Visual Feedback**: Overlay indicators and coordinate display
+- **Minimum Size Validation**: Ensures meaningful monitoring areas
+
+### 2. Intelligent Screenshot Capture
+- **Automatic Triggers**: Change-based capture with configurable thresholds
+- **Manual Controls**: On-demand capture via web interface or keyboard shortcuts
+- **Platform Optimization**: Native capture methods for each operating system
+- **Format Support**: Multiple image formats with compression options
+
+### 3. AI-Powered Analysis
+- **Multi-Provider Support**: OpenAI GPT-4 Vision, Azure AI, extensible to other models
+- **Custom Prompts**: Configurable analysis prompts for specific use cases
+- **Content Recognition**: Text extraction, UI element identification, anomaly detection
+- **Contextual Analysis**: Understanding of changes and their significance
+
+### 4. Modern Web Interface
+- **Responsive Design**: Works on desktop and mobile devices
+- **Real-time Updates**: Live status indicators and automatic refresh
+- **Gallery View**: Organized screenshot management with thumbnails
+- **Settings Panel**: Dynamic configuration without application restart
+
+### 5. Cross-Platform Support
+- **Linux**: Native X11/Wayland support with optional MSS acceleration
+- **Windows**: Direct Windows API integration
+- **WSL**: PowerShell bridge for Windows display access
+- **Keyboard Shortcuts**: Platform-aware keyboard handling
+
+### 6. Configuration Management
+- **Multi-Source**: Environment variables, JSON files, web interface
+- **Dynamic Updates**: Runtime configuration changes
+- **Validation**: Type checking and constraint validation
+- **Persistence**: Automatic saving of user preferences
+
+## Architecture
+
+### High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Web Interface Layer                      │
+├─────────────────────────────────────────────────────────────┤
+│  HTML/CSS/JS Frontend  │  HTTP Server  │  REST API Routes  │
+├─────────────────────────────────────────────────────────────┤
+│                     Service Layer                          │
+├─────────────────────────────────────────────────────────────┤
+│ Screenshot Manager │  ROI Monitor  │  Keyboard Handler    │
+├─────────────────────────────────────────────────────────────┤
+│                     Core Layer                             │
+├─────────────────────────────────────────────────────────────┤
+│ Config Manager │ Screenshot Capture │ Platform Detection   │
+├─────────────────────────────────────────────────────────────┤
+│                  Integration Layer                         │
+├─────────────────────────────────────────────────────────────┤
+│    AI Services    │  File System   │  Operating System    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Component Relationships
+
+```mermaid
+graph TB
+    A[Web Interface] --> B[HTTP Server]
+    B --> C[Screenshot Manager]
+    B --> D[ROI Monitor]
+    B --> E[LLM Analyzer]
+    
+    C --> F[Screenshot Capture]
+    C --> G[Config Manager]
+    C --> H[Keyboard Handler]
+    
+    D --> F
+    D --> G
+    
+    F --> I[Platform Detection]
+    F --> J[OS APIs]
+    
+    E --> K[OpenAI/Azure AI]
+    
+    G --> L[JSON Config Files]
+    G --> M[Environment Variables]
+```
+
+## Module Design
+
+### 1. Core Modules (`src/core/`)
+
+#### **Config Manager** (`config.py`)
+- **Purpose**: Centralized configuration management
+- **Responsibilities**:
+  - Load/save configuration from multiple sources
+  - Validate configuration values
+  - Provide type-safe access to settings
+  - Handle environment variable overrides
+
+```python
+class Config:
+    - _load_config()
+    - _save_config()
+    - get(key, default)
+    - set(key, value)
+    - validate_roi(roi)
+    - get_screenshot_dir()
+```
+
+#### **Screenshot Manager** (`screenshot_manager.py`)
+- **Purpose**: Coordinate all screenshot-related functionality
+- **Responsibilities**:
+  - Manage screenshot collection and storage
+  - Coordinate between ROI monitoring and capture
+  - Handle keyboard shortcuts
+  - Maintain screenshot metadata
+
+```python
+class ScreenshotManager:
+    - initialize()
+    - start_monitoring()
+    - stop_monitoring()
+    - take_manual_screenshot()
+    - get_screenshots()
+    - clear_all_screenshots()
+```
+
+#### **Screenshot Capture** (`screenshot_capture.py`)
+- **Purpose**: Platform-specific screenshot capture
+- **Responsibilities**:
+  - Detect platform capabilities
+  - Use optimal capture method for each platform
+  - Handle ROI cropping
+  - Manage capture errors gracefully
+
+```python
+class ScreenshotCapture:
+    - initialize()
+    - capture_full_screen()
+    - capture_roi()
+    - _capture_linux()
+    - _capture_windows()
+    - _capture_wsl()
+```
+
+#### **ROI Monitor** (`roi_monitor.py`)
+- **Purpose**: Monitor region of interest for changes
+- **Responsibilities**:
+  - Continuous monitoring loop
+  - Change detection algorithms
+  - Callback management for change events
+  - Performance optimization
+
+```python
+class ROIMonitor:
+    - start()
+    - stop()
+    - _check_for_changes()
+    - add_change_callback()
+    - get_statistics()
+```
+
+#### **Keyboard Handler** (`keyboard_handler.py`)
+- **Purpose**: Global keyboard shortcut management
+- **Responsibilities**:
+  - Register global hotkeys
+  - Handle permission requirements
+  - Trigger screenshot actions
+  - Platform-specific key handling
+
+#### **Platform Detection** (`platform_detection.py`)
+- **Purpose**: Detect and adapt to different operating systems
+- **Responsibilities**:
+  - WSL detection and configuration
+  - Display server detection
+  - Capability assessment
+  - Method selection optimization
+
+### 2. API Modules (`src/api/`)
+
+#### **HTTP Server** (`server.py`)
+- **Purpose**: Web server and REST API
+- **Responsibilities**:
+  - Serve static files and templates
+  - Handle REST API endpoints
+  - WebSocket connections for real-time updates
+  - Session management
+
+```python
+class ScreenAgentServer:
+    - start()
+    - find_available_port()
+    - _handle_api_get()
+    - _handle_api_post()
+    - _handle_api_delete()
+```
+
+#### **LLM Analyzer** (`llm_api.py`)
+- **Purpose**: AI integration for screenshot analysis
+- **Responsibilities**:
+  - Multiple AI provider support
+  - Image encoding and processing
+  - Prompt management
+  - Response parsing and formatting
+
+```python
+class LLMAnalyzer:
+    - analyze_screenshot()
+    - _setup_azure_client()
+    - _setup_openai_client()
+    - _encode_image()
+```
+
+### 3. Web Interface (`static/`, `templates/`)
+
+#### **Frontend JavaScript** (`static/js/app.js`)
+- **Purpose**: Interactive web interface
+- **Responsibilities**:
+  - Tab management and navigation
+  - Real-time status updates
+  - ROI selection interface
+  - Screenshot gallery management
+
+#### **Styling** (`static/css/style.css`)
+- **Purpose**: Modern, responsive design
+- **Features**:
+  - CSS custom properties for theming
+  - Responsive grid layouts
+  - Dark/light mode support
+  - Professional component styling
+
+## Data Flow
+
+### 1. Screenshot Capture Flow
+
+```
+User Action → Trigger → Screenshot Capture → Processing → Storage → Display
+     ↓            ↓           ↓              ↓          ↓         ↓
+Manual Click  ROI Change  Platform API   Format/Crop  Memory   Web UI
+Keyboard      Threshold   (PIL/MSS/PS)   Metadata     JSON     Gallery
+Auto Timer    Detection   Error Handle   Validation   File     Analysis
+```
+
+### 2. Configuration Flow
+
+```
+Source → Validation → Merge → Cache → Access → Persistence
+  ↓         ↓         ↓      ↓       ↓         ↓
+File      Type       Env    Memory  Getter    Auto-save
+WebUI     Range      Var    Dict    Method    JSON
+EnvVar    Required   Over   Cache   Property  File
+```
+
+### 3. AI Analysis Flow
+
+```
+Screenshot → Encoding → API Call → Response → Parsing → Storage → Display
+    ↓           ↓          ↓         ↓         ↓         ↓         ↓
+Base64      Format     OpenAI    JSON      Extract   Memory    WebUI
+Resize      Headers    Azure     Stream    Text      Cache     Gallery
+Optimize    Auth       Claude    Error     Insights  Meta      Analysis
+```
+
+## Platform Support
+
+### Linux (Native)
+- **Display Detection**: X11 (`$DISPLAY`) and Wayland (`$WAYLAND_DISPLAY`)
+- **Capture Methods**: 
+  - Primary: `PIL.ImageGrab`
+  - Fallback: `pyautogui`
+  - Performance: `mss` (if available)
+- **Keyboard**: Requires elevated permissions for global hotkeys
+- **Dependencies**: `xlib`, `pynput`, optional `mss`
+
+### Windows
+- **Capture Methods**:
+  - Primary: `PIL.ImageGrab` (Windows API)
+  - Fallback: `pyautogui`
+- **Keyboard**: Native Windows API support
+- **Dependencies**: Minimal, uses built-in Windows APIs
+
+### WSL (Windows Subsystem for Linux)
+- **Detection**: `/proc/version` contains "microsoft" or "wsl"
+- **Capture Method**: PowerShell bridge to Windows
+- **Command**: `powershell.exe -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::PrimaryScreen"`
+- **Limitations**: Keyboard shortcuts require Windows host configuration
+
+### Universal Fallbacks
+- **pyautogui**: Cross-platform fallback for all operations
+- **PIL**: Image processing and format handling
+- **Error Handling**: Graceful degradation when methods fail
+
+## AI Integration
+
+### Provider Architecture
+```python
+class LLMAnalyzer:
+    providers = {
+        'azure': AzureAIProvider,
+        'openai': OpenAIProvider,
+        'claude': ClaudeProvider,  # Future
+        'gemini': GeminiProvider   # Future
+    }
+```
+
+### Configuration
+- **Environment Variables**: `AZURE_AI_ENDPOINT`, `OPENAI_API_KEY`
+- **Model Selection**: `gpt-4o`, `gpt-4-vision-preview`, `claude-3-opus`
+- **Custom Prompts**: User-configurable analysis prompts
+- **Rate Limiting**: Built-in request throttling
+
+### Analysis Features
+- **Content Description**: General screenshot description
+- **Change Detection**: Identify what changed between screenshots
+- **Text Extraction**: OCR-like text recognition
+- **UI Analysis**: Button, form, and interface element identification
+- **Anomaly Detection**: Unusual patterns or errors
+
+## Web Interface
+
+### Technology Stack
+- **Frontend**: Vanilla JavaScript (no framework dependencies)
+- **Styling**: Custom CSS with CSS Grid and Flexbox
+- **Backend**: Python HTTP server with custom routing
+- **Communication**: RESTful API with JSON responses
+
+### Interface Components
+
+#### Dashboard Tab
+- **Status Indicators**: Monitoring state, capture count, uptime
+- **Quick Actions**: Start/stop monitoring, manual capture
+- **Statistics**: Real-time metrics and performance data
+
+#### Screenshots Tab
+- **Gallery View**: Grid layout with thumbnails
+- **Metadata Display**: Timestamp, file size, analysis status
+- **Actions**: View full size, download, analyze, delete
+- **Bulk Operations**: Select multiple, delete all
+
+#### Monitor Tab
+- **ROI Selection**: Interactive canvas with visual feedback
+- **Preview**: Current ROI with overlay
+- **Configuration**: Sensitivity, interval, threshold settings
+
+#### Settings Tab
+- **AI Configuration**: Provider selection, API keys, prompts
+- **Monitoring Options**: Auto-start, keyboard shortcuts
+- **Display Preferences**: Theme, gallery size, refresh rate
+
+### Real-time Features
+- **Auto-refresh**: Periodic updates without page reload
+- **Status Updates**: Live monitoring indicators
+- **Progress Feedback**: Loading states and operation progress
+- **Error Notifications**: User-friendly error messages
+
+## Configuration System
+
+### Configuration Sources (Priority Order)
+1. **Runtime Changes**: Web interface modifications
+2. **Environment Variables**: `OPENAI_API_KEY`, `AZURE_AI_ENDPOINT`, etc.
+3. **Config File**: `screen_agent_config.json`
+4. **Defaults**: Built-in fallback values
+
+### Configuration Schema
+```json
+{
+  "roi": [100, 100, 800, 800],
+  "change_threshold": 20,
+  "check_interval": 0.5,
+  "port": 8000,
+  "max_screenshots": 100,
+  "llm_enabled": false,
+  "llm_model": "gpt-4o",
+  "llm_prompt": "Describe what you see in this screenshot...",
+  "keyboard_shortcuts": {
+    "screenshot": "ctrl+shift+s"
+  },
+  "auto_start_monitoring": false,
+  "save_screenshots": true,
+  "screenshot_format": "png"
+}
+```
+
+### Validation Rules
+- **ROI**: Must be valid coordinates within screen bounds
+- **Thresholds**: Numeric ranges with min/max limits
+- **Intervals**: Positive numbers with reasonable bounds
+- **Paths**: Valid file system paths with write permissions
+- **API Keys**: Format validation for different providers
+
+## Error Handling & Reliability
+
+### Error Categories
+
+#### **Recoverable Errors**
+- Network timeouts for AI analysis
+- Temporary file system issues
+- Screenshot capture failures
+- Configuration validation errors
+
+#### **Non-Recoverable Errors**
+- Missing dependencies
+- Permission denied errors
+- Invalid configuration files
+- System capability limitations
+
+### Error Handling Strategies
+
+#### **Graceful Degradation**
+```python
+try:
+    screenshot = capture_with_mss()
+except ImportError:
+    screenshot = capture_with_pil()
+except Exception:
+    screenshot = capture_with_pyautogui()
+```
+
+#### **User Feedback**
+- **Web Interface**: Toast notifications and error panels
+- **Console**: Structured logging with severity levels
+- **Status Indicators**: Visual feedback for system state
+
+#### **Automatic Recovery**
+- **Retry Logic**: Exponential backoff for transient failures
+- **Fallback Methods**: Multiple approaches for each operation
+- **State Restoration**: Resume monitoring after errors
+
+### Logging System
+```python
+import logging
+
+logger = logging.getLogger('screenagent')
+handler = logging.FileHandler('screenagent.log')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+```
+
+## Security Considerations
+
+### Data Protection
+- **Local Storage**: Screenshots stored locally, not transmitted
+- **API Keys**: Environment variable storage, not in config files
+- **Temporary Files**: Automatic cleanup of temporary data
+
+### Access Control
+- **Local Only**: Web interface bound to localhost by default
+- **Port Configuration**: User-configurable port selection
+- **File Permissions**: Appropriate file system permissions
+
+### Privacy Features
+- **No Telemetry**: No data sent to external services except chosen AI providers
+- **User Control**: Complete control over what data is analyzed
+- **Data Retention**: Configurable screenshot retention limits
+
+## Performance Optimizations
+
+### Screenshot Capture
+- **Platform Optimization**: Use fastest available method for each OS
+- **ROI Cropping**: Capture only required regions
+- **Format Selection**: Efficient image formats and compression
+- **Caching**: Avoid redundant captures
+
+### Memory Management
+- **Circular Buffer**: Limit screenshot collection size
+- **Image Compression**: Balance quality vs. memory usage
+- **Garbage Collection**: Explicit cleanup of large objects
+- **Background Processing**: Non-blocking operations
+
+### Network Efficiency
+- **Image Optimization**: Resize images before AI analysis
+- **Request Batching**: Group API calls when possible
+- **Caching**: Cache analysis results
+- **Compression**: Compress data transmission
+
+### User Interface
+- **Lazy Loading**: Load images as needed
+- **Virtual Scrolling**: Handle large screenshot collections
+- **Debounced Updates**: Reduce unnecessary re-renders
+- **Background Sync**: Non-blocking data updates
+
+## Multi-Monitor Support & Troubleshooting
+
+### Multi-Monitor Architecture
+
+ScreenAgent handles multi-monitor setups through virtual screen coordinate mapping:
+
+#### **Coordinate System**
+```
+┌─────────────────────────────────────────────────────┐
+│                Virtual Screen                        │
+│  ┌─────────────┐              ┌─────────────┐      │
+│  │   Monitor 1 │              │   Monitor 2 │      │
+│  │ (Secondary) │              │  (Primary)  │      │
+│  │             │              │             │      │
+│  │   (0,0)     │              │ (1920,0)    │      │
+│  │             │              │             │      │
+│  └─────────────┘              └─────────────┘      │
+└─────────────────────────────────────────────────────┘
+```
+
+#### **WSL Multi-Monitor Implementation**
+The WSL PowerShell bridge handles multi-monitor through:
+
+1. **Virtual Screen Detection**:
+   ```powershell
+   $VScreen = [System.Windows.Forms.SystemInformation]::VirtualScreen
+   # Gets the bounding box of all monitors combined
+   ```
+
+2. **Individual Monitor Analysis**:
+   ```powershell
+   $Monitors = [System.Windows.Forms.Screen]::AllScreens
+   # Enumerates each physical monitor with bounds
+   ```
+
+3. **Coordinate Validation**:
+   - ROI coordinates from web interface are virtual screen coordinates
+   - Validates ROI fits within virtual screen bounds
+   - Detects which monitor(s) the ROI intersects
+
+#### **Common Multi-Monitor Issues**
+
+**Problem: ROI captured from wrong monitor**
+- **Cause**: Coordinate system misalignment between web interface and capture
+- **Solution**: Enhanced coordinate validation and monitor intersection detection
+- **Debug**: PowerShell outputs detailed monitor bounds and ROI validation
+
+**Problem: ROI capture returns minimal data**
+- **Cause**: ROI coordinates may be outside virtual screen bounds
+- **Solution**: Bounds checking and error reporting
+- **Debug**: File size validation against expected ROI dimensions
+
+**Problem: Inconsistent results across monitors**
+- **Cause**: Different pixel densities or scaling factors
+- **Solution**: Use absolute virtual screen coordinates
+- **Debug**: Monitor-specific bounds logging
+
+#### **Debugging Multi-Monitor Issues**
+
+**Enhanced Debug Output**:
+```bash
+# Run with debug output
+python debug_multimonitor.py
+
+# Check PowerShell output for:
+# - Virtual screen bounds
+# - Individual monitor positions  
+# - ROI intersection analysis
+# - Coordinate validation results
+```
+
+**Validation Steps**:
+1. **Check Virtual Screen**: Verify ROI coordinates fit within virtual bounds
+2. **Monitor Intersection**: Ensure ROI intersects at least one monitor
+3. **File Size Validation**: Compare output size to expected ROI dimensions
+4. **Visual Verification**: Compare captured ROI to expected screen area
+
+#### **Multi-Monitor Best Practices**
+
+**For Users**:
+- Use the web interface for ROI selection (handles coordinates automatically)
+- Verify ROI selection on the correct monitor in preview
+- Check that green ROI outline matches intended area
+
+**For Developers**:
+- Always validate ROI coordinates against virtual screen bounds
+- Log monitor intersection information for debugging
+- Implement file size sanity checks for capture validation
+- Use virtual screen coordinates consistently throughout the system
+
+**Configuration Tips**:
+- Monitor arrangement affects virtual screen coordinate system
+- Primary monitor position influences coordinate origins
+- Display scaling may affect coordinate precision
+
+### Future Multi-Monitor Enhancements
+
+- **Per-Monitor ROI**: Support multiple ROIs across different monitors
+- **Monitor-Specific Settings**: Individual configuration per monitor
+- **Display Change Detection**: Automatic recalibration when monitors are added/removed
+- **DPI Awareness**: Handle different DPI scaling factors properly
+
+---
+*This design document serves as the single source of truth for understanding ScreenAgent's architecture, features, and implementation details. It should be updated as the system evolves and new features are added.*
