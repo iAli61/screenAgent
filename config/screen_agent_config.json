@@ -6,5 +6,7 @@
     300
   ],
   "change_threshold": 20.0,
-  "check_interval": 0.5
+  "check_interval": 0.5,
+  "storage_type": "filesystem",
+  "screenshot_dir": "screenshots"
 }

@@ -134,7 +134,7 @@ class ScreenshotCaptureFactory:
     @staticmethod
     def get_recommended_method() -> CaptureMethod:
         """Get the recommended capture method for current platform"""
-        from .platform_detection import get_recommended_screenshot_method
+        from ...utils.platform_detection import get_recommended_screenshot_method
         
         method_mapping = {
             'wsl_powershell': CaptureMethod.WSL_POWERSHELL,

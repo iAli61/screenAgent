@@ -542,6 +542,26 @@ class ScreenshotManager:
         storage_stats = self._orchestrator.storage.get_storage_stats()
         return storage_stats['count']
     
+    def take_unified_roi_screenshot(self, roi: tuple = None) -> Optional[bytes]:
+        """Take a unified ROI screenshot (legacy method compatibility)"""
+        return self.take_roi_screenshot(roi)
+    
+    def add_screenshot(self, timestamp: str, screenshot_data: bytes, metadata: dict = None):
+        """Add a screenshot to the collection (legacy method compatibility)"""
+        # In the orchestrator architecture, screenshots are automatically stored via events
+        # This method is kept for compatibility but doesn't need to do anything
+        # as the screenshot was already stored when take_unified_roi_screenshot was called
+        pass
+    
+    def get_screenshot_data(self, index: int) -> Optional[bytes]:
+        """Get screenshot data by index (legacy method compatibility)"""
+        screenshots = self._orchestrator.get_screenshots()
+        if 0 <= index < len(screenshots):
+            screenshot_id = screenshots[index].get('id')
+            if screenshot_id:
+                return self._orchestrator.get_screenshot_data(screenshot_id)
+        return None
+
     def clear_all_screenshots(self) -> bool:
         """Clear all screenshots from memory"""
         return self._orchestrator.clear_all_screenshots()

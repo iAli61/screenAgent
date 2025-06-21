@@ -69,12 +69,19 @@ class Config:
             'llm_model': os.getenv('LLM_MODEL', 'gpt-4o'),
             'llm_prompt': os.getenv('LLM_PROMPT', 'Describe what you see in this screenshot, focusing on the most important elements.'),
             'temp_screenshot_path': os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+                'temp',
                 'temp_screenshot.png'
             ),
             'keyboard_shortcut': 'f12',
             'max_screenshots': 100,  # Maximum number of screenshots to keep
             'auto_cleanup': True,   # Automatically remove old screenshots
+            # Storage configuration
+            'storage_type': 'filesystem',  # Default to file-based storage for persistence
+            'screenshot_dir': os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+                'screenshots'
+            ),
         }
         
         return defaults.get(key, fallback)
@@ -158,6 +165,16 @@ class Config:
         """Get temporary screenshot path"""
         return str(self.get('temp_screenshot_path'))
     
+    @property
+    def storage_type(self) -> str:
+        """Get storage type"""
+        return str(self.get('storage_type', 'filesystem'))
+    
+    @property
+    def screenshot_dir(self) -> str:
+        """Get screenshot directory"""
+        return str(self.get('screenshot_dir'))
+
     def to_dict(self) -> Dict[str, Any]:
         """Get all configuration as dictionary"""
         return self._config_cache.copy()

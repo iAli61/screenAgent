@@ -93,6 +93,8 @@ A modern, intelligent screen monitoring application that captures and analyzes c
 | `llm_enabled` | Enable AI analysis | `false` | `true` |
 | `llm_model` | AI model selection | `gpt-4o` | `gpt-4-vision-preview` |
 | `max_screenshots` | Screenshot retention limit | `100` | `500` |
+| `storage_type` | Storage backend type | `filesystem` | `memory` |
+| `screenshot_dir` | Screenshot storage directory | `screenshots/` | `~/data/screenshots/` |
 
 > 🔧 **For complete configuration details and advanced options, see [Design.md](./Design.md#configuration-system)**
 
@@ -101,6 +103,12 @@ A modern, intelligent screen monitoring application that captures and analyzes c
 ```
 screenAgent/
 ├── main.py                    # Application entry point
+├── screenshots/               # 📁 Persistent screenshot storage (file-based)
+│   └── run_YYYYMMDD_HHMMSS_<uuid>/  # Unique directories per app run
+│       ├── <uuid>.png         # Screenshot files with metadata
+│       └── metadata.json      # Screenshot index and metadata
+├── temp/                      # 📁 Temporary files (ROI selection, previews)
+│   └── temp_screenshot.png    # Temporary screenshot for ROI selection
 ├── src/                       # Source code modules
 │   ├── core/                  # Core functionality (modular architecture)
 │   │   ├── capture/           # Screenshot capture implementations
@@ -159,6 +167,8 @@ ScreenAgent has been refactored into a modern, modular architecture for improved
 
 ### **Storage Abstraction Layer**
 - **Multiple Storage Backends**: Memory and file system storage with pluggable architecture
+- **File-Based Storage Default**: Screenshots persist to disk in organized run directories
+- **Unique Run Directories**: Each app session gets isolated storage to prevent conflicts
 - **Metadata Management**: Comprehensive screenshot metadata with timestamps, ROI info, and analysis results
 - **Automatic Cleanup**: Configurable size limits with automatic old screenshot removal
 - **Thread-Safe Operations**: Proper locking mechanisms for concurrent access

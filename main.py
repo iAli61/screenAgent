@@ -25,7 +25,7 @@ sys.path.append('src/core')
 sys.path.append('src/core/config')
 
 from src.core.config.config import Config
-from src.core.storage.screenshot_manager import ScreenshotManager
+from src.core.storage.screenshot_orchestrator import ScreenshotManager  # Using refactored manager with storage orchestrator
 from src.core.monitoring.roi_monitor import ROIMonitor
 from src.api.server import ScreenAgentServer
 from src.utils.keyboard_handler import KeyboardHandler

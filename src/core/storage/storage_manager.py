@@ -448,11 +448,24 @@ class StorageFactory:
     @staticmethod
     def create_default_storage(config) -> ScreenshotStorage:
         """Create default storage based on configuration"""
+        import uuid
+        import time
+        
         storage_type = config.get('storage_type', 'memory')
         max_screenshots = config.get('max_screenshots', 100)
         
         if storage_type == 'filesystem':
-            storage_dir = config.get('screenshot_dir', 'screenshots')
+            base_storage_dir = config.get('screenshot_dir', 'screenshots')
+            
+            # Create unique run directory to avoid conflicts between app runs
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            unique_id = str(uuid.uuid4())[:8]
+            run_dir_name = f"run_{timestamp}_{unique_id}"
+            
+            # Full path for this run's screenshots
+            storage_dir = os.path.join(base_storage_dir, run_dir_name)
+            
+            print(f"📁 Using screenshot directory: {storage_dir}")
             return StorageFactory.create_filesystem_storage(storage_dir, max_screenshots)
         else:
             # Default to memory storage
