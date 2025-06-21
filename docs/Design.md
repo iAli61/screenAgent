@@ -257,6 +257,62 @@ class LLMAnalyzer:
   - Dark/light mode support
   - Professional component styling
 
+## Storage System
+
+### Storage Architecture
+
+ScreenAgent implements a flexible storage system with multiple backends and automatic organization:
+
+#### **File-Based Storage (Default)**
+- **Location**: `~/repo/screenAgent/screenshots/` and `~/repo/screenAgent/temp/`
+- **Organization**: Unique run directories prevent conflicts between app sessions
+- **Structure**:
+  ```
+  screenshots/
+  ├── run_20250621_102448_fd0d69c3/    # Unique per app run
+  │   ├── d8a3f2bc-fab6-40d4-9b2d-7b3d63803dfd.png
+  │   ├── af99385c-31f6-45d8-bbf7-1374a388b682.png
+  │   └── metadata.json              # Screenshot index and metadata
+  └── run_20250621_080855_de0319a6/    # Previous runs preserved
+      └── ...
+  
+  temp/
+  └── temp_screenshot.png             # ROI selection and preview
+  ```
+
+#### **Storage Features**
+- **Unique Run Directories**: Format `run_YYYYMMDD_HHMMSS_<8-char-uuid>`
+- **UUID File Names**: Screenshots saved with unique identifiers
+- **Metadata Management**: Comprehensive JSON metadata with timestamps, ROI info, analysis results
+- **Automatic Cleanup**: Configurable size limits with oldest-first removal
+- **Thread Safety**: Proper locking mechanisms for concurrent access
+- **Separation of Concerns**: Temp files separate from persistent storage
+
+#### **Storage Backends**
+```python
+class ScreenshotStorage:
+    - store_screenshot(screenshot: ScreenshotData) -> bool
+    - retrieve_screenshot(screenshot_id: str) -> ScreenshotData
+    - list_screenshots(limit: int) -> List[ScreenshotMetadata]
+    - delete_screenshot(screenshot_id: str) -> bool
+    - get_storage_stats() -> Dict[str, Any]
+```
+
+**Supported Backends**:
+- **FileSystemScreenshotStorage**: Persistent file-based storage (default)
+- **MemoryScreenshotStorage**: In-memory storage with optional persistence
+
+#### **Configuration**
+```json
+{
+  "storage_type": "filesystem",
+  "screenshot_dir": "screenshots",
+  "temp_screenshot_path": "temp/temp_screenshot.png",
+  "max_screenshots": 100,
+  "auto_cleanup": true
+}
+```
+
 ## Data Flow
 
 ### 1. Screenshot Capture Flow
@@ -264,12 +320,23 @@ class LLMAnalyzer:
 ```
 User Action → Trigger → Screenshot Capture → Processing → Storage → Display
      ↓            ↓           ↓              ↓          ↓         ↓
-Manual Click  ROI Change  Platform API   Format/Crop  Memory   Web UI
-Keyboard      Threshold   (PIL/MSS/PS)   Metadata     JSON     Gallery
-Auto Timer    Detection   Error Handle   Validation   File     Analysis
+Manual Click  ROI Change  Platform API   Format/Crop  Filesystem Web UI
+Keyboard      Threshold   (PIL/MSS/PS)   Metadata     Run Dir   Gallery
+Auto Timer    Detection   Error Handle   Validation   UUID.png  Analysis
+                                        Temp Files   metadata.json
 ```
 
-### 2. Configuration Flow
+### 2. Storage Architecture Flow
+
+```
+Screenshot → Event → Orchestrator → Storage Manager → File System
+     ↓         ↓         ↓              ↓               ↓
+Capture    Metadata   Coordination   Backend Choice   /screenshots/
+ROI Data   Timestamp  Error Handle   File/Memory      run_YYYYMMDD_HHMMSS_<uuid>/
+Temp File  UUID       Event System   Thread Safety    <uuid>.png + metadata.json
+```
+
+### 3. Configuration Flow
 
 ```
 Source → Validation → Merge → Cache → Access → Persistence
@@ -277,16 +344,18 @@ Source → Validation → Merge → Cache → Access → Persistence
 File      Type       Env    Memory  Getter    Auto-save
 WebUI     Range      Var    Dict    Method    JSON
 EnvVar    Required   Over   Cache   Property  File
+Storage   Path       Keys   Config  Dynamic   Run Dir
 ```
 
-### 3. AI Analysis Flow
+### 4. AI Analysis Flow
 
 ```
 Screenshot → Encoding → API Call → Response → Parsing → Storage → Display
     ↓           ↓          ↓         ↓         ↓         ↓         ↓
-Base64      Format     OpenAI    JSON      Extract   Memory    WebUI
-Resize      Headers    Azure     Stream    Text      Cache     Gallery
-Optimize    Auth       Claude    Error     Insights  Meta      Analysis
+Base64      Format     OpenAI    JSON      Extract   File      WebUI
+Resize      Headers    Azure     Stream    Text      Metadata  Gallery
+Optimize    Auth       Claude    Error     Insights  JSON      Analysis
+Load File   Token      Models    Retry     Context   UUID      Response
 ```
 
 ## Platform Support
@@ -405,7 +474,11 @@ class LLMAnalyzer:
   },
   "auto_start_monitoring": false,
   "save_screenshots": true,
-  "screenshot_format": "png"
+  "screenshot_format": "png",
+  "storage_type": "filesystem",
+  "screenshot_dir": "screenshots",
+  "temp_screenshot_path": "temp/temp_screenshot.png",
+  "auto_cleanup": true
 }
 ```
 
