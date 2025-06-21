@@ -1,5 +1,18 @@
 # ScreenAgent 🎯
 
+A modern, intelligent screen monitoring application that captures and analyzes changes within user-defined regions of interest (ROI) using AI-powered analysis. Built with a modular, event-driven architecture for enhanced maintainability and extensibility.
+
+## ✨ Key Features
+
+- **🎯 Smart ROI Monitoring**: Interactive region selection with real-time change detection
+- **🤖 AI-Powered Analysis**: Multi-provider AI integration (OpenAI GPT-4 Vision, Azure AI)
+- **🌐 Modern Web Interface**: Responsive dashboard with real-time updates and screenshot gallery
+- **📱 Cross-Platform**: Seamless operation on Linux, Windows, and WSL environments
+- **⚙️ Flexible Configuration**: Web-based settings with dynamic updates
+- **⌨️ Keyboard Shortcuts**: Global hotkeys for manual screenshot capture
+- **📊 Real-time Statistics**: Monitor uptime, capture count, and system performance
+- **🏗️ Modular Architecture**: Event-driven design with pluggable storage and capture backends 🎯
+
 A modern, intelligent screen monitoring application that captures and analyzes changes within user-defined regions of interest (ROI) using AI-powered analysis.
 
 ## ✨ Key Features
@@ -89,26 +102,89 @@ A modern, intelligent screen monitoring application that captures and analyzes c
 screenAgent/
 ├── main.py                    # Application entry point
 ├── src/                       # Source code modules
-│   ├── core/                  # Core functionality
-│   │   ├── config.py          # Configuration management
-│   │   ├── screenshot_manager.py  # Screenshot coordination
-│   │   ├── screenshot_capture.py  # Platform-specific capture
-│   │   ├── roi_monitor.py     # Change detection engine
+│   ├── core/                  # Core functionality (modular architecture)
+│   │   ├── capture/           # Screenshot capture implementations
+│   │   │   ├── __init__.py
+│   │   │   ├── capture_interfaces.py      # Abstract capture interfaces
+│   │   │   ├── capture_implementations.py # Platform-specific capture
+│   │   │   └── screenshot_capture_refactored.py # Main capture manager
+│   │   ├── config/            # Configuration management
+│   │   │   ├── __init__.py
+│   │   │   └── config.py      # Centralized configuration
+│   │   ├── events/            # Event system for component communication
+│   │   │   ├── __init__.py
+│   │   │   └── events.py      # Event types and dispatcher
+│   │   ├── monitoring/        # ROI monitoring and change detection
+│   │   │   ├── __init__.py
+│   │   │   ├── change_detection.py        # Pluggable detection strategies
+│   │   │   └── roi_monitor_refactored.py  # Event-driven monitor
+│   │   └── storage/           # Data storage and management
+│   │       ├── __init__.py
+│   │       ├── storage_manager.py         # Storage abstraction layer
+│   │       ├── screenshot_orchestrator.py # Orchestrates all operations
+│   │       └── screenshot_manager_refactored.py # Clean API wrapper
+│   ├── api/                   # Web server and AI integration
+│   │   ├── server.py          # HTTP server and REST API
+│   │   └── llm_api.py         # Multi-provider AI analysis
+│   ├── models/                # Data models and schemas
+│   ├── services/              # Service layer abstractions
+│   ├── utils/                 # Utility modules
 │   │   ├── keyboard_handler.py    # Global hotkey support
 │   │   └── platform_detection.py  # OS/environment detection
-│   └── api/                   # Web server and AI integration
-│       ├── server.py          # HTTP server and REST API
-│       └── llm_api.py         # Multi-provider AI analysis
+│   └── ui/                    # User interface components
 ├── static/                    # Web assets
 │   ├── css/style.css         # Modern responsive CSS
 │   └── js/app.js             # Interactive frontend
 ├── templates/                 # HTML templates
 │   ├── index.html            # Main dashboard
 │   └── select_roi.html       # ROI selection interface
+├── tests/                     # Test suite
+│   ├── test_phase_1_4_basic.py           # Phase 1.4 validation
+│   ├── test_screenshot_manager_refactor.py # Comprehensive tests
+│   └── test_screenshot_manager_simple.py  # Simplified test suite
+├── docs/                      # Documentation
+│   ├── Design.md             # Comprehensive system design
+│   ├── PHASE_1_4_SUMMARY.md  # Latest refactoring summary
+│   └── REFACTORING_TODO.md   # Development roadmap
+├── legacy/                    # Original implementation (preserved)
+├── config/                    # Configuration files
 └── requirements.txt          # Python dependencies
 ```
 
 > 🏗️ **For detailed architecture and design patterns, see [Design.md](./Design.md#architecture)**
+
+## 🔧 Modular Architecture (Phase 1.4)
+
+ScreenAgent has been refactored into a modern, modular architecture for improved maintainability and extensibility:
+
+### **Storage Abstraction Layer**
+- **Multiple Storage Backends**: Memory and file system storage with pluggable architecture
+- **Metadata Management**: Comprehensive screenshot metadata with timestamps, ROI info, and analysis results
+- **Automatic Cleanup**: Configurable size limits with automatic old screenshot removal
+- **Thread-Safe Operations**: Proper locking mechanisms for concurrent access
+
+### **Screenshot Orchestrator**
+- **Event-Driven Coordination**: Centralized orchestration of all screenshot operations
+- **Component Communication**: Event system connecting capture, monitoring, and storage
+- **Performance Monitoring**: Built-in statistics and health monitoring
+- **Graceful Error Handling**: Comprehensive error recovery strategies
+
+### **Modular Capture System**
+- **Platform Abstraction**: Clean interfaces with multiple capture implementations
+- **Automatic Fallbacks**: Multiple capture methods with intelligent fallback strategies
+- **Factory Pattern**: Dynamic selection of optimal capture method per platform
+
+### **Enhanced Monitoring**
+- **Pluggable Detection**: Multiple change detection algorithms
+- **Event System**: Real-time communication between components
+- **Performance Metrics**: Detailed monitoring statistics and health checks
+
+**Architecture Benefits:**
+- ✅ **Separation of Concerns**: Each module has a single, clear responsibility
+- ✅ **Testability**: Components can be tested independently
+- ✅ **Extensibility**: Easy to add new storage backends or capture methods  
+- ✅ **Maintainability**: Clear interfaces and minimal coupling
+- ✅ **Backward Compatibility**: Existing code continues to work with wrapper layer
 
 ## 🤖 AI Analysis
 
@@ -138,6 +214,15 @@ ScreenAgent supports multiple AI providers for intelligent screenshot analysis:
 
 ## 🛠️ Development & Contributing
 
+### Development Status
+**✅ Phase 1.4 Complete (June 2025)**: Major refactoring to modular architecture
+- Modular storage system with multiple backends
+- Event-driven screenshot orchestration
+- Enhanced component testability and maintainability
+- Comprehensive error handling and recovery
+
+**🚀 Upcoming**: Phase 1.5 - Keyboard Handler refactoring, Service Layer creation
+
 ### Development Setup
 ```bash
 # Fork and clone the repository
@@ -155,9 +240,12 @@ python main.py
 ```
 
 ### Testing
-- `test_basic.py` - Core functionality tests
-- `test_comprehensive_screenshot.py` - Screenshot capture tests
-- `test_roi_functionality.py` - ROI monitoring tests
+- `tests/test_phase_1_4_basic.py` - Phase 1.4 refactoring validation
+- `tests/test_screenshot_manager_refactor.py` - Comprehensive refactored component tests
+- `tests/test_screenshot_manager_simple.py` - Simplified test suite
+- `test_basic.py` - Core functionality tests (legacy)
+- `test_comprehensive_screenshot.py` - Screenshot capture tests (legacy)
+- `test_roi_functionality.py` - ROI monitoring tests (legacy)
 - `minimal_test.py` - Minimal example
 
 ### Contributing
@@ -207,4 +295,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**📋 For comprehensive documentation, see [Design.md](./Design.md) - your single source of truth for system architecture, features, and implementation details.**
+**📋 For comprehensive documentation:**
+- **[Design.md](./docs/Design.md)** - Complete system architecture and technical details
+- **[PHASE_1_4_SUMMARY.md](./docs/PHASE_1_4_SUMMARY.md)** - Latest refactoring summary and achievements
+- **[REFACTORING_TODO.md](./docs/REFACTORING_TODO.md)** - Development roadmap and future plans

@@ -1,7 +1,7 @@
 // ScreenAgent UI JavaScript
 class ScreenAgentUI {
     constructor() {
-        this.currentTab = 'screenshots';
+        this.currentTab = 'single-screenshot';
         this.screenshots = [];
         this.roi = null;
         this.isSelecting = false;
@@ -51,9 +51,12 @@ class ScreenAgentUI {
         // Load tab-specific data
         if (tabName === 'settings') {
             this.loadSettings();
-        } else if (tabName === 'monitor') {
-            // Refresh ROI preview when switching to monitor tab
+        } else if (tabName === 'select-roi') {
+            // Refresh ROI preview when switching to select-roi tab
             setTimeout(() => this.updateRoiPreview(), 100);
+        } else if (tabName === 'single-screenshot' || tabName === 'monitoring') {
+            // Load screenshots for both screenshot tabs
+            this.refreshScreenshots();
         }
     }
     
@@ -69,9 +72,14 @@ class ScreenAgentUI {
             toggleMonitoringBtn.addEventListener('click', () => this.toggleMonitoring());
         }
         
-        const deleteAllBtn = document.getElementById('delete-all-screenshots');
+        const deleteAllBtn = document.getElementById('delete-all-screenshots-single');
         if (deleteAllBtn) {
             deleteAllBtn.addEventListener('click', () => this.deleteAllScreenshots());
+        }
+        
+        const deleteAllBtnMonitoring = document.getElementById('delete-all-screenshots-monitoring');
+        if (deleteAllBtnMonitoring) {
+            deleteAllBtnMonitoring.addEventListener('click', () => this.deleteAllScreenshots());
         }
         
         const selectRoiBtn = document.getElementById('select-roi');
@@ -147,13 +155,19 @@ class ScreenAgentUI {
     
     async refreshScreenshots() {
         try {
+            console.log('Refreshing screenshots...');
             const response = await fetch('/api/screenshots');
             const data = await response.json();
             
+            console.log('Screenshots API response:', data);
+            
             if (data.success) {
                 this.screenshots = data.screenshots;
+                console.log('Screenshots loaded:', this.screenshots.length, 'items');
                 this.renderScreenshots();
                 this.updateStatus(data.status);
+            } else {
+                console.error('Failed to load screenshots:', data);
             }
         } catch (error) {
             console.error('Error refreshing screenshots:', error);
@@ -210,21 +224,32 @@ class ScreenAgentUI {
     }
     
     renderScreenshots() {
-        const container = document.getElementById('screenshots-container');
-        if (!container) return;
+        console.log('renderScreenshots called with', this.screenshots.length, 'screenshots');
+        const containerSingle = document.getElementById('screenshots-container-single');
+        const containerMonitoring = document.getElementById('screenshots-container-monitoring');
+        
+        console.log('Containers found:', {
+            single: !!containerSingle,
+            monitoring: !!containerMonitoring
+        });
+        
+        const emptyContent = `
+            <div class="text-center">
+                <p class="text-secondary">No screenshots captured yet.</p>
+                <button class="btn btn-primary mt-2" onclick="ui.takeScreenshot()">
+                    Take First Screenshot
+                </button>
+            </div>
+        `;
         
         if (this.screenshots.length === 0) {
-            container.innerHTML = `
-                <div class="text-center">
-                    <p class="text-secondary">No screenshots captured yet.</p>
-                    <button class="btn btn-primary mt-2" onclick="ui.takeScreenshot()">
-                        Take First Screenshot
-                    </button>
-                </div>
-            `;
+            console.log('No screenshots, showing empty content');
+            if (containerSingle) containerSingle.innerHTML = emptyContent;
+            if (containerMonitoring) containerMonitoring.innerHTML = emptyContent;
             return;
         }
         
+        console.log('Rendering', this.screenshots.length, 'screenshots');
         const html = this.screenshots.map((screenshot, index) => `
             <div class="screenshot-item">
                 <img src="/screenshot/${index}" 
@@ -255,7 +280,14 @@ class ScreenAgentUI {
             </div>
         `).join('');
         
-        container.innerHTML = html;
+        if (containerSingle) {
+            containerSingle.innerHTML = html;
+            console.log('Updated single container with HTML length:', html.length);
+        }
+        if (containerMonitoring) {
+            containerMonitoring.innerHTML = html;
+            console.log('Updated monitoring container with HTML length:', html.length);
+        }
     }
     
     updateRoiDisplay() {
@@ -364,6 +396,7 @@ class ScreenAgentUI {
     }
     
     async takeScreenshot() {
+        console.log('takeScreenshot called');
         const button = document.getElementById('take-screenshot');
         const originalText = button.textContent;
         
@@ -371,12 +404,17 @@ class ScreenAgentUI {
             button.disabled = true;
             button.innerHTML = '<span class="spinner"></span> Taking screenshot...';
             
+            console.log('Sending POST request to /api/trigger');
             const response = await fetch('/api/trigger', { method: 'POST' });
             const data = await response.json();
             
+            console.log('Screenshot API response:', data);
+            
             if (data.success) {
                 this.showAlert('Screenshot captured successfully!', 'success');
+                console.log('About to refresh screenshots...');
                 await this.refreshScreenshots();
+                console.log('Screenshot refresh completed');
             } else {
                 this.showAlert(data.error || 'Failed to take screenshot', 'error');
             }
@@ -395,12 +433,27 @@ class ScreenAgentUI {
             return;
         }
         
-        const button = document.getElementById('delete-all-screenshots');
-        const originalText = button.textContent;
+        // Find which delete button was clicked based on current tab
+        let button;
+        if (this.currentTab === 'single-screenshot') {
+            button = document.getElementById('delete-all-screenshots-single');
+        } else if (this.currentTab === 'monitoring') {
+            button = document.getElementById('delete-all-screenshots-monitoring');
+        }
+        
+        if (!button) {
+            // Fallback - try to find any delete button
+            button = document.getElementById('delete-all-screenshots-single') || 
+                     document.getElementById('delete-all-screenshots-monitoring');
+        }
+        
+        const originalText = button ? button.textContent : 'Delete All Screenshots';
         
         try {
-            button.disabled = true;
-            button.innerHTML = '<span class="spinner"></span> Deleting...';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner"></span> Deleting...';
+            }
             
             const response = await fetch('/api/screenshots', { method: 'DELETE' });
             const data = await response.json();
@@ -415,8 +468,10 @@ class ScreenAgentUI {
             console.error('Error deleting screenshots:', error);
             this.showAlert('Failed to delete screenshots', 'error');
         } finally {
-            button.disabled = false;
-            button.textContent = originalText;
+            if (button) {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
         }
     }
     

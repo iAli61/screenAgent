@@ -413,15 +413,16 @@ class ScreenAgentServer:
             def _api_trigger_screenshot(self):
                 """Trigger a manual screenshot"""
                 try:
-                    # Use screenshot manager instead of roi_monitor
+                    # Use unified method to ensure consistency with preview
                     roi = config.roi
-                    screenshot = screenshot_manager.take_roi_screenshot(roi)
+                    screenshot = screenshot_manager.take_unified_roi_screenshot(roi)
                     if screenshot:
                         # Add to screenshot manager's collection
                         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         screenshot_manager.add_screenshot(timestamp, screenshot, {
                             'manual': True,
-                            'roi': roi
+                            'roi': roi,
+                            'method': 'unified_roi'
                         })
                         self._send_json({'success': True, 'message': 'Screenshot captured'})
                     else:

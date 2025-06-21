@@ -24,43 +24,78 @@
 
         <nav class="nav">
             <div class="nav-tabs">
-                <button class="nav-tab active" data-tab="screenshots">Screenshots</button>
-                <button class="nav-tab" data-tab="monitor">Monitor</button>
+                <button class="nav-tab active" data-tab="single-screenshot">Single Screenshot</button>
+                <button class="nav-tab" data-tab="monitoring">Monitoring</button>
+                <button class="nav-tab" data-tab="select-roi">Select ROI</button>
                 <button class="nav-tab" data-tab="settings">Settings</button>
             </div>
         </nav>
 
-        <!-- Screenshots Tab -->
-        <div id="screenshots" class="tab-content active">
+        <!-- Single Screenshot Tab -->
+        <div id="single-screenshot" class="tab-content active">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Screenshot Gallery</h2>
-                    <p class="card-subtitle">View and analyze captured screenshots</p>
+                    <h2 class="card-title">Single Screenshot</h2>
+                    <p class="card-subtitle">Take manual screenshots and manage your collection</p>
                 </div>
                 
                 <div class="flex gap-2 mb-3">
                     <button id="take-screenshot" class="btn btn-success">
                         📸 Take Single Screenshot
                     </button>
-                    <button id="toggle-monitoring" class="btn btn-primary">
-                        🔍 Start Monitoring
-                    </button>
-                    <button id="delete-all-screenshots" class="btn btn-danger">
+                    <button id="delete-all-screenshots-single" class="btn btn-danger">
                         🗑️ Delete All Screenshots
                     </button>
                 </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Screenshot Gallery</h2>
+                    <p class="card-subtitle">View and manage your manually captured screenshots</p>
+                </div>
                 
-                <div id="screenshots-container" class="screenshot-grid">
+                <div id="screenshots-container-single" class="screenshot-grid">
                     <!-- Screenshots will be loaded here -->
                 </div>
             </div>
         </div>
 
-        <!-- Monitor Tab -->
-        <div id="monitor" class="tab-content">
+        <!-- Monitoring Tab -->
+        <div id="monitoring" class="tab-content">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Region of Interest</h2>
+                    <h2 class="card-title">Monitoring Dashboard</h2>
+                    <p class="card-subtitle">Start/stop monitoring and view automated screenshots</p>
+                </div>
+                
+                <div class="flex gap-2 mb-3">
+                    <button id="toggle-monitoring" class="btn btn-primary">
+                        🔍 Start Monitoring
+                    </button>
+                    <button id="delete-all-screenshots-monitoring" class="btn btn-danger">
+                        🗑️ Delete All Screenshots
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Screenshot Gallery</h2>
+                    <p class="card-subtitle">View and analyze automatically captured screenshots</p>
+                </div>
+                
+                <div id="screenshots-container-monitoring" class="screenshot-grid">
+                    <!-- Screenshots will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Select ROI Tab -->
+        <div id="select-roi" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Select Region of Interest</h2>
                     <p class="card-subtitle">Configure the area to monitor for changes</p>
                 </div>
                 

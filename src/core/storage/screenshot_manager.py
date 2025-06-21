@@ -73,6 +73,87 @@ class ScreenshotManager:
             roi = self.config.roi
         return self.screenshot_capture.capture_roi(roi)
     
+    def take_unified_roi_screenshot(self, roi: Tuple[int, int, int, int] = None) -> Optional[bytes]:
+        """
+        Take a unified ROI screenshot by capturing full screen (same as preview) and cropping ROI.
+        This ensures consistency between preview and trigger endpoints for multi-monitor setups.
+        
+        Args:
+            roi: Region of interest as (left, top, right, bottom). If None, uses config.roi
+            
+        Returns:
+            Screenshot data as bytes if successful, None otherwise
+            
+        Note:
+            This method captures a full screenshot first (using the same method as /api/preview)
+            and then crops the specified ROI. This ensures that both preview and trigger use
+            the same coordinate system and handle multi-monitor setups consistently.
+        """
+        if roi is None:
+            roi = self.config.roi
+        
+        if not roi:
+            print("❌ No ROI configured for unified screenshot")
+            return None
+        
+        # Validate ROI format
+        if len(roi) != 4:
+            print(f"❌ Invalid ROI format: {roi}. Expected (left, top, right, bottom)")
+            return None
+        
+        left, top, right, bottom = roi
+        if left >= right or top >= bottom:
+            print(f"❌ Invalid ROI coordinates: {roi}. left must be < right and top must be < bottom")
+            return None
+        
+        # Capture full screen using the same method as preview
+        full_screenshot = self.screenshot_capture.capture_full_screen()
+        if not full_screenshot:
+            print("❌ Failed to capture full screen for ROI cropping")
+            return None
+        
+        # Crop the ROI from the full screenshot
+        try:
+            if not PIL_AVAILABLE:
+                print("❌ PIL not available, cannot crop ROI from full screenshot")
+                print("   Install PIL with: pip install Pillow")
+                return None
+            
+            # Load the full screenshot
+            img = Image.open(io.BytesIO(full_screenshot))
+            img_width, img_height = img.size
+            
+            # Validate and adjust ROI coordinates to stay within image bounds
+            adjusted_left = max(0, min(left, img_width - 1))
+            adjusted_top = max(0, min(top, img_height - 1))
+            adjusted_right = max(adjusted_left + 1, min(right, img_width))
+            adjusted_bottom = max(adjusted_top + 1, min(bottom, img_height))
+            
+            # Log if coordinates were adjusted
+            if (adjusted_left, adjusted_top, adjusted_right, adjusted_bottom) != (left, top, right, bottom):
+                print(f"⚠️  ROI coordinates adjusted to fit image bounds:")
+                print(f"   Original: ({left}, {top}, {right}, {bottom})")
+                print(f"   Adjusted: ({adjusted_left}, {adjusted_top}, {adjusted_right}, {adjusted_bottom})")
+                print(f"   Image size: {img_width}x{img_height}")
+            
+            # Crop the image
+            cropped_img = img.crop((adjusted_left, adjusted_top, adjusted_right, adjusted_bottom))
+            
+            # Convert back to bytes
+            output = io.BytesIO()
+            cropped_img.save(output, format='PNG')
+            
+            crop_width = adjusted_right - adjusted_left
+            crop_height = adjusted_bottom - adjusted_top
+            print(f"✅ Unified ROI screenshot: {crop_width}x{crop_height} pixels from full {img_width}x{img_height} image")
+            return output.getvalue()
+            
+        except Exception as e:
+            print(f"❌ Failed to crop ROI from full screenshot: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
     def take_full_screenshot(self, save_to_temp: bool = True) -> bool:
         """Take a full screen screenshot (alias for compatibility)"""
         result = self.take_screenshot(save_to_temp)
