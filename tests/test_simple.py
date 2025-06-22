@@ -30,7 +30,7 @@ except ImportError as e:
     print(f"❌ Capture implementations import failed: {e}")
 
 try:
-    from src.core.screenshot_capture_refactored import ScreenshotCaptureManager
+    from src.core.capture.screenshot_capture import ScreenshotCaptureManager
     print("✅ Screenshot capture manager import successful")
 except ImportError as e:
     print(f"❌ Screenshot capture manager import failed: {e}")

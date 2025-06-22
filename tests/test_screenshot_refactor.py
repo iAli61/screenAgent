@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Performance and functionality test for refactored screenshot capture module
-Tests both old and new implementations to compare performance
-Part of Phase 1.2 - Screenshot Capture Module Refactoring
+Performance and functionality test for the unified screenshot capture module
+Tests the consolidated implementation after removing duplicated code
 """
 import time
 import sys
@@ -16,9 +15,8 @@ sys.path.insert(0, current_dir)
 
 try:
     from src.core.config import Config
-    from src.core.screenshot_capture import ScreenshotCapture as OldScreenshotCapture
-    from src.core.screenshot_capture_refactored import ScreenshotCaptureManager, ScreenshotCapture as NewScreenshotCapture
-    from src.core.platform_detection import get_platform_info, get_recommended_screenshot_method
+    from src.core.capture.screenshot_capture import ScreenshotCaptureManager, ScreenshotCapture
+    from src.utils.platform_detection import get_platform_info, get_recommended_screenshot_method
 except ImportError as e:
     print(f"❌ Import error: {e}")
     sys.exit(1)

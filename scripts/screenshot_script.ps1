@@ -8,6 +8,9 @@
         $Left = $Screen.Left
         $Top = $Screen.Top
         
+        # Send debug info to stderr
+        [Console]::Error.WriteLine("PowerShell Screenshot: Capturing $Width x $Height screen at ($Left, $Top)")
+        
         try {
             # Create bitmap and grab screen
             $bitmap = New-Object System.Drawing.Bitmap $Width, $Height
@@ -20,12 +23,15 @@
             $bytes = $ms.ToArray()
             $base64 = [Convert]::ToBase64String($bytes)
             
-            # Output the base64 string
+            [Console]::Error.WriteLine("PowerShell Screenshot: Successfully captured $($bytes.Length) bytes")
+            
+            # Output the base64 string to stdout (this is the only stdout output)
             Write-Output $base64
             $bitmap.Dispose()
             $ms.Dispose()
         }
         catch {
+            [Console]::Error.WriteLine("PowerShell Screenshot Error: Failed to capture screenshot: $_")
             Write-Error "Failed to capture screenshot: $_"
             exit 1
         }

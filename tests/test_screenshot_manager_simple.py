@@ -38,7 +38,7 @@ def test_imports():
         return False
     
     try:
-        from src.core.screenshot_capture_refactored import ScreenshotCaptureManager
+        from src.core.capture.screenshot_capture import ScreenshotCaptureManager
         print("   ✅ Screenshot capture imported")
     except Exception as e:
         print(f"   ❌ Screenshot capture import failed: {e}")

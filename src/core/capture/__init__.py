@@ -20,7 +20,7 @@ from .capture_implementations import (
     HeadlessCapture
 )
 
-from .screenshot_capture_refactored import ScreenshotCaptureManager
+from .screenshot_capture import ScreenshotCaptureManager, ScreenshotCapture
 
 __all__ = [
     'AbstractScreenshotCapture',
@@ -32,5 +32,6 @@ __all__ = [
     'MSSCapture',
     'PyAutoGUICapture',
     'HeadlessCapture',
-    'ScreenshotCaptureManager'
+    'ScreenshotCaptureManager',
+    'ScreenshotCapture'
 ]

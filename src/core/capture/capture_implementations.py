@@ -59,6 +59,9 @@ class WSLPowerShellCapture(AbstractScreenshotCapture):
         $Left = $Screen.Left
         $Top = $Screen.Top
         
+        # Send debug info to stderr instead of stdout
+        [Console]::Error.WriteLine("PowerShell Screenshot: Capturing full screen $Width x $Height at ($Left, $Top)")
+        
         try {
             $bitmap = New-Object System.Drawing.Bitmap $Width, $Height
             $graphic = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -69,8 +72,12 @@ class WSLPowerShellCapture(AbstractScreenshotCapture):
             $bytes = $ms.ToArray()
             $base64 = [Convert]::ToBase64String($bytes)
             
+            [Console]::Error.WriteLine("PowerShell Screenshot: Successfully captured $($bytes.Length) bytes")
+            
+            # Only output base64 data to stdout
             Write-Output $base64
         } catch {
+            [Console]::Error.WriteLine("PowerShell Screenshot Error: $($_.Exception.Message)")
             Write-Error $_.Exception.Message
             exit 1
         } finally {
@@ -116,16 +123,16 @@ class WSLPowerShellCapture(AbstractScreenshotCapture):
         $VirtualWidth = $Screen.Width
         $VirtualHeight = $Screen.Height
         
-        # Get all monitors for detailed debugging
+        # Get all monitors for detailed debugging - send to stderr
         $Monitors = [System.Windows.Forms.Screen]::AllScreens
-        Write-Host "=== MULTI-MONITOR DEBUG ===" -ForegroundColor Yellow
-        Write-Host "Virtual Screen: Left=$VirtualLeft, Top=$VirtualTop, Width=$VirtualWidth, Height=$VirtualHeight" -ForegroundColor Cyan
-        Write-Host "Number of monitors: $($Monitors.Count)" -ForegroundColor Cyan
+        [Console]::Error.WriteLine("=== MULTI-MONITOR DEBUG ===")
+        [Console]::Error.WriteLine("Virtual Screen: Left=$VirtualLeft, Top=$VirtualTop, Width=$VirtualWidth, Height=$VirtualHeight")
+        [Console]::Error.WriteLine("Number of monitors: $($Monitors.Count)")
         
         for ($i = 0; $i -lt $Monitors.Count; $i++) {{
             $Monitor = $Monitors[$i]
             $Bounds = $Monitor.Bounds
-            Write-Host "Monitor $($i + 1): X=$($Bounds.X), Y=$($Bounds.Y), Width=$($Bounds.Width), Height=$($Bounds.Height), Primary=$($Monitor.Primary)" -ForegroundColor Cyan
+            [Console]::Error.WriteLine("Monitor $($i + 1): X=$($Bounds.X), Y=$($Bounds.Y), Width=$($Bounds.Width), Height=$($Bounds.Height), Primary=$($Monitor.Primary)")
         }}
         
         # ROI coordinates (from web interface, these are screen coordinates)
@@ -134,13 +141,13 @@ class WSLPowerShellCapture(AbstractScreenshotCapture):
         $ROIWidth = {width}
         $ROIHeight = {height}
         
-        Write-Host "Original ROI: Left=$ROILeft, Top=$ROITop, Width=$ROIWidth, Height=$ROIHeight" -ForegroundColor Magenta
+        [Console]::Error.WriteLine("Original ROI: Left=$ROILeft, Top=$ROITop, Width=$ROIWidth, Height=$ROIHeight")
         
         # Use ROI coordinates directly - they are already screen coordinates from the web interface
         $CaptureLeft = $ROILeft
         $CaptureTop = $ROITop
         
-        Write-Host "Capture coordinates: Left=$CaptureLeft, Top=$CaptureTop, Width=$ROIWidth, Height=$ROIHeight" -ForegroundColor Green
+        [Console]::Error.WriteLine("Capture coordinates: Left=$CaptureLeft, Top=$CaptureTop, Width=$ROIWidth, Height=$ROIHeight")
         
         # Validate capture area is within virtual screen bounds
         $MaxX = $VirtualLeft + $VirtualWidth
@@ -148,16 +155,16 @@ class WSLPowerShellCapture(AbstractScreenshotCapture):
         
         if ($CaptureLeft -lt $VirtualLeft -or $CaptureTop -lt $VirtualTop -or 
             ($CaptureLeft + $ROIWidth) -gt $MaxX -or ($CaptureTop + $ROIHeight) -gt $MaxY) {{
-            Write-Host "WARNING: ROI extends beyond virtual screen bounds!" -ForegroundColor Red
-            Write-Host "Virtual bounds: $VirtualLeft,$VirtualTop to $MaxX,$MaxY" -ForegroundColor Red
-            Write-Host "ROI bounds: $CaptureLeft,$CaptureTop to $($CaptureLeft + $ROIWidth),$($CaptureTop + $ROIHeight)" -ForegroundColor Red
+            [Console]::Error.WriteLine("WARNING: ROI extends beyond virtual screen bounds!")
+            [Console]::Error.WriteLine("Virtual bounds: $VirtualLeft,$VirtualTop to $MaxX,$MaxY")
+            [Console]::Error.WriteLine("ROI bounds: $CaptureLeft,$CaptureTop to $($CaptureLeft + $ROIWidth),$($CaptureTop + $ROIHeight)")
         }}
         
         try {{
             $bitmap = New-Object System.Drawing.Bitmap $ROIWidth, $ROIHeight
             $graphic = [System.Drawing.Graphics]::FromImage($bitmap)
             
-            Write-Host "Attempting CopyFromScreen($CaptureLeft, $CaptureTop, 0, 0, Size($ROIWidth, $ROIHeight))" -ForegroundColor Yellow
+            [Console]::Error.WriteLine("Attempting CopyFromScreen($CaptureLeft, $CaptureTop, 0, 0, Size($ROIWidth, $ROIHeight))")
             $graphic.CopyFromScreen($CaptureLeft, $CaptureTop, 0, 0, $bitmap.Size)
             
             $ms = New-Object System.IO.MemoryStream
@@ -165,10 +172,12 @@ class WSLPowerShellCapture(AbstractScreenshotCapture):
             $bytes = $ms.ToArray()
             $base64 = [Convert]::ToBase64String($bytes)
             
-            Write-Host "Capture successful: $($bytes.Length) bytes" -ForegroundColor Green
+            [Console]::Error.WriteLine("Capture successful: $($bytes.Length) bytes")
+            
+            # Only output base64 data to stdout
             Write-Output $base64
         }} catch {{
-            Write-Host "Capture failed: $($_.Exception.Message)" -ForegroundColor Red
+            [Console]::Error.WriteLine("Capture failed: $($_.Exception.Message)")
             Write-Error $_.Exception.Message
             exit 1
         }} finally {{

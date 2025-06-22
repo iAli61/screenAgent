@@ -25,7 +25,7 @@ sys.path.append('src/core')
 sys.path.append('src/core/config')
 
 from src.core.config.config import Config
-from src.core.storage.screenshot_orchestrator import ScreenshotManager  # Using refactored manager with storage orchestrator
+from src.core.storage.screenshot_manager_unified import ScreenshotManager  # Using unified manager
 from src.core.monitoring.roi_monitor import ROIMonitor
 from src.api.server import ScreenAgentServer
 from src.utils.keyboard_handler import KeyboardHandler
@@ -66,7 +66,7 @@ class ScreenAgentApp:
                 return False
             
             # Start ROI monitoring
-            self._start_roi_monitor()
+            # self._start_roi_monitor()
             
             # Start keyboard handler if available
             self._start_keyboard_handler()

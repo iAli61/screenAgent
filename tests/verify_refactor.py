@@ -24,7 +24,7 @@ def test_imports():
         from src.core.capture_implementations import WSLPowerShellCapture, WindowsNativeCapture
         
         # Test refactored manager
-        from src.core.screenshot_capture_refactored import ScreenshotCaptureManager
+        from src.core.capture.screenshot_capture import ScreenshotCaptureManager
         
         print("✅ All imports successful")
         return True
@@ -38,7 +38,7 @@ def test_basic_functionality():
     """Test basic functionality of refactored components"""
     try:
         from src.core.config import Config
-        from src.core.screenshot_capture_refactored import ScreenshotCaptureManager
+        from src.core.capture.screenshot_capture import ScreenshotCaptureManager
         from src.core.capture_interfaces import CaptureMethod
         
         # Create config and manager

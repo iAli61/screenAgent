@@ -216,11 +216,23 @@ class ScreenshotCapture:
         """Capture ROI - backward compatible interface"""
         result = self._manager.capture_roi(roi)
         return result.data if result.success else None
+    
+    def cleanup(self) -> None:
+        """Clean up resources"""
+        self._manager.cleanup()
 
 
-# Legacy functions for backward compatibility
+# Unified legacy functions - consolidated from old implementation
 def take_screenshot(roi: Tuple[int, int, int, int] = None) -> Optional[bytes]:
-    """Legacy function for taking screenshots"""
+    """
+    Legacy function for taking screenshots
+    
+    Args:
+        roi: Region of interest (left, top, right, bottom). If None, takes full screenshot
+        
+    Returns:
+        Screenshot data as bytes, or None if failed
+    """
     config = Config()
     manager = ScreenshotCaptureManager(config)
     
@@ -239,7 +251,15 @@ def take_screenshot(roi: Tuple[int, int, int, int] = None) -> Optional[bytes]:
 
 
 def take_full_screenshot(save_to_temp: bool = False) -> Optional[bytes]:
-    """Legacy function for taking full screenshots"""
+    """
+    Legacy function for taking full screenshots
+    
+    Args:
+        save_to_temp: Whether to save screenshot to temporary file
+        
+    Returns:
+        Screenshot data as bytes, or None if failed
+    """
     config = Config()
     manager = ScreenshotCaptureManager(config)
     

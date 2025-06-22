@@ -16,7 +16,7 @@ sys.path.insert(0, current_dir)
 try:
     from src.core.config import Config
     from src.core.roi_monitor_refactored import ROIMonitorManager, ROIMonitor
-    from src.core.screenshot_capture_refactored import ScreenshotCaptureManager
+    from src.core.capture.screenshot_capture import ScreenshotCaptureManager
     from src.core.change_detection import ChangeDetectorFactory, ChangeDetectionMethod
     from src.core.events import EventType, emit_event, get_event_dispatcher
 except ImportError as e:

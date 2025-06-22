@@ -1,8 +1,7 @@
 """
 ROI monitoring module
 
-This module provides region-of-interest monitoring with pluggable
-change detection strategies and event-driven architecture.
+This module provides region-of-interest monitoring with change detection.
 """
 
 from .change_detection import (
@@ -14,9 +13,7 @@ from .change_detection import (
     ChangeEvent
 )
 
-from .roi_monitor_refactored import ROIMonitorManager
-
-# Legacy import for backward compatibility
+# Main import - only the existing ROI monitor
 from .roi_monitor import ROIMonitor
 
 __all__ = [
@@ -26,6 +23,5 @@ __all__ = [
     'PixelDiffChangeDetector',
     'ChangeDetectionResult',
     'ChangeEvent',
-    'ROIMonitorManager',
-    'ROIMonitor'  # Legacy
+    'ROIMonitor'
 ]

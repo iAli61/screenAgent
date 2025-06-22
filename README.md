@@ -115,7 +115,7 @@ screenAgent/
 │   │   │   ├── __init__.py
 │   │   │   ├── capture_interfaces.py      # Abstract capture interfaces
 │   │   │   ├── capture_implementations.py # Platform-specific capture
-│   │   │   └── screenshot_capture_refactored.py # Main capture manager
+│   │   │   └── screenshot_capture.py       # Unified capture manager
 │   │   ├── config/            # Configuration management
 │   │   │   ├── __init__.py
 │   │   │   └── config.py      # Centralized configuration
@@ -309,3 +309,46 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **[Design.md](./docs/Design.md)** - Complete system architecture and technical details
 - **[PHASE_1_4_SUMMARY.md](./docs/PHASE_1_4_SUMMARY.md)** - Latest refactoring summary and achievements
 - **[REFACTORING_TODO.md](./docs/REFACTORING_TODO.md)** - Development roadmap and future plans
+
+## 🔧 Frontend Refactoring (React Migration)
+
+**🚀 New React Frontend Available**: ScreenAgent now includes a modern React-based frontend alongside the original vanilla JavaScript interface.
+
+### React Frontend Features
+- **Modern Architecture**: React 18 + TypeScript + Tailwind CSS
+- **Modular Design**: Component-based architecture for better maintainability  
+- **Enhanced Performance**: Optimized bundling and lazy loading
+- **Future-Ready**: Prepared for projects, chat AI, voice features, and multi-model comparison
+
+### Quick Start with React Frontend
+
+```bash
+# Setup React frontend (one-time)
+./scripts/setup_react_frontend.sh
+
+# Start development
+cd frontend
+npm run dev  # React frontend (port 3000)
+
+# In another terminal
+cd /home/alibina/repo/screenAgent
+python main.py  # Python backend (port 8000)
+```
+
+**Accessing the Application:**
+- **React Frontend**: http://localhost:3000 (recommended for development)
+- **Legacy Frontend**: http://localhost:8000 (original vanilla JS interface)
+
+### Migration Status
+- ✅ **Phase 1 Complete**: React foundation, component structure, development environment
+- 🚧 **Phase 2 In Progress**: State management, API integration, UI components
+- 📋 **Upcoming**: Core feature migration, advanced features, testing
+
+**Documentation:**
+- **[React Setup Guide](./docs/react_setup_guide.md)** - Getting started with React frontend
+- **[Frontend Refactoring Plan](./docs/frontend_refactoring_todo.md)** - Detailed migration roadmap
+
+### For Production Use
+The legacy vanilla JavaScript frontend remains fully functional. The React frontend is currently in development and recommended for contributors and advanced users.
+
+> 📋 **The React migration is designed to be non-disruptive** - both frontends can run simultaneously during the transition period.
