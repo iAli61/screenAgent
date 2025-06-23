@@ -39,7 +39,8 @@ class MonitoringController:
                 last_capture = screenshots[0].timestamp.value.isoformat()
             
             status = {
-                'monitoring_active': len(active_sessions) > 0,
+                'active': len(active_sessions) > 0,  # Frontend expects 'active' not 'monitoring_active'
+                'monitoring_active': len(active_sessions) > 0,  # Keep for backward compatibility
                 'active_sessions': len(active_sessions),
                 'screenshot_count': screenshot_count,
                 'last_capture': last_capture,

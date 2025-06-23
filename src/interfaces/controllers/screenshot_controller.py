@@ -79,6 +79,19 @@ class ScreenshotController:
                     'error': 'Screenshot not found'
                 }
             
+            # Load the actual image data from file if not already loaded
+            image_data = screenshot.data
+            if not image_data and screenshot.file_path:
+                try:
+                    with open(screenshot.file_path.path, 'rb') as f:
+                        image_data = f.read()
+                except Exception as e:
+                    print(f"Error reading image file {screenshot.file_path.path}: {e}")
+                    return {
+                        'success': False,
+                        'error': f'Could not read image file: {e}'
+                    }
+            
             return {
                 'success': True,
                 'screenshot': {
@@ -89,7 +102,8 @@ class ScreenshotController:
                     'format': screenshot.format,
                     'size_bytes': screenshot.size_bytes,
                     'file_path': str(screenshot.file_path.path),
-                    'metadata': screenshot.metadata
+                    'metadata': screenshot.metadata,
+                    'data': image_data  # Include the loaded binary data
                 }
             }
             
@@ -265,9 +279,12 @@ class ScreenshotController:
             metadata = {'preview': True, 'temporary': True}
             screenshot = await self.screenshot_service.capture_full_screen(metadata=metadata)
             
-            # TODO: Return actual image data when file service is implemented
-            # For now, return None to indicate no preview available
-            return None
+            # Return the image data directly
+            if screenshot and screenshot.data:
+                return screenshot.data
+            else:
+                print("Warning: Screenshot captured but no data available")
+                return None
             
         except Exception as e:
             print(f"Error generating preview: {e}")
