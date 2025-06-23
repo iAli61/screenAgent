@@ -18,7 +18,7 @@ class ConfigurationController:
     async def get_configuration(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Get current configuration"""
         try:
-            config = await self.configuration_repository.get_config()
+            config = await self.configuration_repository.get_all_config()
             
             return {
                 'success': True,
@@ -59,7 +59,7 @@ class ConfigurationController:
                 }
             
             # Get current config
-            current_config = await self.configuration_repository.get_config()
+            current_config = await self.configuration_repository.get_all_config()
             
             # Merge updates
             updated_config = self._merge_config(current_config, config_updates)
@@ -96,7 +96,7 @@ class ConfigurationController:
                         'error': f"Unknown configuration section: {section}"
                     }
                 
-                current_config = await self.configuration_repository.get_config()
+                current_config = await self.configuration_repository.get_all_config()
                 current_config[section] = default_config[section]
                 await self.configuration_repository.save_config(current_config)
                 
@@ -481,3 +481,64 @@ class ConfigurationController:
                 'max_storage_mb': {'type': 'number', 'min': 100, 'max': 100000}
             }
         }
+    
+    async def get_system_status(self) -> Dict[str, Any]:
+        """Get system status and health information"""
+        try:
+            # Get basic configuration status
+            config = await self.configuration_repository.get_all_config()
+            
+            return {
+                'success': True,
+                'status': 'healthy',
+                'timestamp': datetime.now().isoformat(),
+                'uptime': 'unknown',  # TODO: Track actual uptime
+                'version': '1.0.0',   # TODO: Get from package info
+                'environment': 'development',
+                'components': {
+                    'configuration': 'healthy',
+                    'storage': 'healthy',
+                    'api': 'healthy'
+                },
+                'metrics': {
+                    'config_size': len(str(config)),
+                    'last_updated': 'unknown'  # TODO: Track last update time
+                }
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'status': 'unhealthy',
+                'timestamp': datetime.now().isoformat(),
+                'error': str(e),
+                'components': {
+                    'configuration': 'error',
+                    'storage': 'unknown',
+                    'api': 'degraded'
+                }
+            }
+    
+    def health_check(self) -> Dict[str, Any]:
+        """Simple health check endpoint (synchronous)"""
+        try:
+            return {
+                'status': 'ok',
+                'timestamp': datetime.now().isoformat(),
+                'checks': {
+                    'controller': 'ok',
+                    'repository': 'ok'  # TODO: Add actual repository health check
+                },
+                'response_time': 0.001  # TODO: Measure actual response time
+            }
+            
+        except Exception as e:
+            return {
+                'status': 'error', 
+                'timestamp': datetime.now().isoformat(),
+                'error': str(e),
+                'checks': {
+                    'controller': 'error',
+                    'repository': 'unknown'
+                }
+            }

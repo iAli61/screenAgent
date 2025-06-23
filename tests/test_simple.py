@@ -14,10 +14,10 @@ sys.path.append(os.path.join(project_root, 'src'))
 print("Testing clean architecture components...")
 
 try:
-    from src.core.config.config import Config
-    print("✅ Config import successful")
+    from src.infrastructure.dependency_injection.container import get_container, setup_container
+    print("✅ Configuration (DI) import successful")
 except ImportError as e:
-    print(f"❌ Config import failed: {e}")
+    print(f"❌ Configuration (DI) import failed: {e}")
 
 try:
     from src.infrastructure.dependency_injection import get_container, setup_container
@@ -45,9 +45,9 @@ except ImportError as e:
     print(f"❌ Controllers import failed: {e}")
 
 try:
-    from src.api.server import ScreenAgentServer
-    print("✅ Server import successful")
+    from src.api.flask_app import create_app
+    print("✅ Flask app import successful")
 except ImportError as e:
-    print(f"❌ Server import failed: {e}")
+    print(f"❌ Flask app import failed: {e}")
 
 print("Basic import test completed.")

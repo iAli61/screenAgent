@@ -43,13 +43,12 @@ class ModernScreenAgentTest:
         """Test that all clean architecture imports work"""
         self.print_header("Testing Clean Architecture Imports")
         
-        # Test core config
+        # Test core config (using new DI approach)
         try:
-            from src.core.config.config import Config
-            config = Config()
-            self.test_result("Core Config Import", True)
+            from src.infrastructure.dependency_injection.container import get_container, setup_container
+            self.test_result("Core Config (DI) Import", True)
         except Exception as e:
-            self.test_result("Core Config Import", False, str(e))
+            self.test_result("Core Config (DI) Import", False, str(e))
         
         # Test dependency injection
         try:
@@ -212,19 +211,19 @@ class ModernScreenAgentTest:
             self.test_result("Controllers Test", False, str(e))
             traceback.print_exc()
     
-    def test_server_initialization(self):
-        """Test server can be initialized"""
-        self.print_header("Testing Server Initialization")
+    def test_flask_app_initialization(self):
+        """Test Flask app can be initialized"""
+        self.print_header("Testing Flask App Initialization")
         
         try:
-            from src.api.server import ScreenAgentServer
+            from src.api.flask_app import create_app
             
-            # Test server creation (should not require parameters now)
-            server = ScreenAgentServer()
-            self.test_result("Server Initialization", True)
+            # Test Flask app creation
+            app = create_app()
+            self.test_result("Flask App Initialization", True)
             
         except Exception as e:
-            self.test_result("Server Initialization", False, str(e))
+            self.test_result("Flask App Initialization", False, str(e))
             traceback.print_exc()
     
     async def run_all_tests(self):
@@ -236,7 +235,7 @@ class ModernScreenAgentTest:
         self.test_imports()
         self.test_dependency_injection()
         self.test_service_resolution()
-        self.test_server_initialization()
+        self.test_flask_app_initialization()
         
         # Asynchronous tests
         await self.test_screenshot_service()

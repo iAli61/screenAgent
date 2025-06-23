@@ -250,6 +250,36 @@ class ContainerBuilder:
         file_storage_service = FileStorageService(storage_strategy)
         self.container.register_instance(IFileStorageService, file_storage_service)
         
+        # Controllers with dependency injection
+        def create_screenshot_controller():
+            return ScreenshotController(
+                screenshot_service=self.container.get(IScreenshotService),
+                analysis_service=self.container.get(IAnalysisService)
+            )
+        
+        def create_monitoring_controller():
+            return MonitoringController(
+                monitoring_service=self.container.get(IMonitoringService),
+                screenshot_service=self.container.get(IScreenshotService)
+            )
+        
+        def create_analysis_controller():
+            return AnalysisController(
+                analysis_service=self.container.get(IAnalysisService),
+                screenshot_service=self.container.get(IScreenshotService)
+            )
+        
+        def create_configuration_controller():
+            from src.domain.repositories.configuration_repository import IConfigurationRepository
+            return ConfigurationController(
+                configuration_repository=self.container.get(IConfigurationRepository)
+            )
+        
+        self.container.register_transient(ScreenshotController, create_screenshot_controller)
+        self.container.register_transient(MonitoringController, create_monitoring_controller)
+        self.container.register_transient(AnalysisController, create_analysis_controller)
+        self.container.register_transient(ConfigurationController, create_configuration_controller)
+        
         logger.info("Default services configured")
         return self
     

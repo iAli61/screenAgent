@@ -71,9 +71,10 @@ class ScreenAgentApp:
             self.screenshot_service = container.get(IScreenshotService)
             self.monitoring_service = container.get(IMonitoringService)
             
-            # Create server with clean architecture (no legacy dependencies needed)
-            from src.api.server import ScreenAgentServer
-            self.server = ScreenAgentServer()
+            # Create Flask app (replaces old custom server)
+            from src.api.flask_app import create_app
+            self.app = create_app()
+            self.server = None  # Flask handles server internally
             
         except Exception as e:
             print(f"❌ Failed to initialize clean architecture: {e}")
@@ -107,7 +108,8 @@ class ScreenAgentApp:
             # self._start_keyboard_handler()
             
             self._running = True
-            print(f"✅ ScreenAgent is running at http://localhost:{self.server.port}")
+            print(f"✅ ScreenAgent is running at http://localhost:{self.port}")
+            print(f"📚 Swagger documentation available at: http://localhost:{self.port}/docs/")
             print("Press Ctrl+C to stop")
             
             # Take initial screenshot
@@ -132,9 +134,8 @@ class ScreenAgentApp:
         print("\n🛑 Stopping ScreenAgent...")
         self._running = False
         
-        # Stop server
-        if self.server:
-            self.server.stop()
+        # Flask server stops automatically when threads finish
+        # No explicit stop method needed
         
         # Wait for threads to finish
         self._join_threads()
@@ -142,21 +143,34 @@ class ScreenAgentApp:
         print("✅ ScreenAgent stopped successfully")
     
     def _start_server(self) -> bool:
-        """Start the web server in a separate thread"""
+        """Start the Flask web server in a separate thread"""
         try:
-            port = self.server.find_available_port()
-            if port is None:
-                return False
+            import os
+            import threading
+            
+            # Get configuration from environment or use defaults
+            host = os.environ.get('FLASK_HOST', '0.0.0.0')
+            port = int(os.environ.get('FLASK_PORT', 8000))
+            
+            # Store port for access by other methods
+            self.port = port
+            
+            def run_flask_app():
+                self.app.run(
+                    host=host,
+                    port=port,
+                    debug=False,  # No debug in production
+                    use_reloader=False  # No reloader in production
+                )
             
             self._server_thread = threading.Thread(
-                target=self.server.start,
-                args=(port,),
+                target=run_flask_app,
                 daemon=True
             )
             self._server_thread.start()
             return True
         except Exception as e:
-            print(f"Error starting server: {e}")
+            print(f"Error starting Flask server: {e}")
             return False
     
     def _start_keyboard_handler(self):

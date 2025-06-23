@@ -72,7 +72,7 @@ ScreenAgent is a modern, intelligent screen monitoring application designed to c
 ┌─────────────────────────────────────────────────────────────┐
 │                    Web Interface Layer                      │
 ├─────────────────────────────────────────────────────────────┤
-│  HTML/CSS/JS Frontend  │  HTTP Server  │  REST API Routes  │
+│  React Frontend (TS)  │  Flask Server  │  Flask-RESTX API  │
 ├─────────────────────────────────────────────────────────────┤
 │                   Application Layer                        │
 ├─────────────────────────────────────────────────────────────┤
@@ -96,28 +96,29 @@ ScreenAgent is a modern, intelligent screen monitoring application designed to c
 
 ```mermaid
 graph TB
-    A[Web Interface] --> B[HTTP Server]
-    B --> C[Controllers]
-    C --> D[Application Services]
+    A[React Frontend] --> B[Flask + Flask-RESTX]
+    B --> C[API Blueprints]
+    C --> D[Controllers]
+    D --> E[Application Services]
     
-    D --> E[Screenshot Service]
-    D --> F[Monitoring Service]
-    D --> G[Analysis Service]
+    E --> F[Screenshot Service]
+    E --> G[Monitoring Service]
+    E --> H[Analysis Service]
     
-    E --> H[Storage Strategies]
-    F --> I[Detection Strategies]
+    F --> I[Storage Strategies]
+    G --> J[Detection Strategies]
     
-    I --> J[ThresholdDetector]
-    I --> K[PixelDiffDetector]
-    I --> L[HashComparisonDetector]
+    J --> K[ThresholdDetector]
+    J --> L[PixelDiffDetector]
+    J --> M[HashComparisonDetector]
     
-    H --> M[FileStorageStrategy]
-    H --> N[MemoryStorageStrategy]
+    I --> N[FileStorageStrategy]
+    I --> O[MemoryStorageStrategy]
     
-    E --> O[Screenshot Capture]
-    F --> O
+    F --> P[Screenshot Capture]
+    G --> P
     
-    O --> P[Platform Detection]
+    P --> Q[Platform Detection]
     O --> Q[OS APIs]
     
     G --> R[OpenAI/Azure AI]
@@ -281,22 +282,29 @@ class RefactoredROIMonitor:
 
 ### 2. API Modules (`src/api/`)
 
-#### **HTTP Server** (`server.py`)
-- **Purpose**: Web server and REST API
+#### **Flask API Server** (`flask_app.py`)
+- **Purpose**: Modern web server and REST API with Flask framework
 - **Responsibilities**:
-  - Serve static files and templates
-  - Handle REST API endpoints
-  - WebSocket connections for real-time updates
-  - Session management
+  - REST API endpoints with Flask-RESTX
+  - Swagger/OpenAPI documentation
+  - Middleware for error handling, validation, security
+  - Dependency injection integration
+  - CORS configuration
 
 ```python
-class ScreenAgentServer:
-    - start()
-    - find_available_port()
-    - _handle_api_get()
-    - _handle_api_post()
-    - _handle_api_delete()
+def create_app(config=None) -> Flask:
+    # Flask app with Flask-RESTX API
+    # Blueprints for different API modules
+    # Middleware setup
+    # Swagger documentation
 ```
+
+**Key Improvements over Custom Server:**
+- Professional web framework with proven reliability
+- Automatic Swagger documentation generation
+- Structured middleware pipeline
+- Better error handling and validation
+- Industry-standard security headers
 
 #### **LLM Analyzer** (`llm_api.py`)
 - **Purpose**: AI integration for screenshot analysis
@@ -314,23 +322,22 @@ class LLMAnalyzer:
     - _encode_image()
 ```
 
-### 3. Web Interface (`static/`, `templates/`)
+### 3. Web Interface
 
-#### **Frontend JavaScript** (`static/js/app.js`)
-- **Purpose**: Interactive web interface
+#### **React Frontend** (`frontend/`)
+- **Purpose**: Modern interactive web interface built with React.js
 - **Responsibilities**:
-  - Tab management and navigation
+  - Component-based UI architecture
   - Real-time status updates
   - ROI selection interface
   - Screenshot gallery management
+  - Responsive design with Tailwind CSS
 
-#### **Styling** (`static/css/style.css`)
-- **Purpose**: Modern, responsive design
-- **Features**:
-  - CSS custom properties for theming
-  - Responsive grid layouts
-  - Dark/light mode support
-  - Professional component styling
+#### **Legacy Static Interface** (Removed)
+- **Status**: ✅ **MIGRATED** - Obsolete static files and templates removed
+- **Former Location**: `static/`, `templates/` (removed during Flask migration)
+- **Replaced By**: React-based frontend with modern component architecture
+- **Benefits**: Better maintainability, modern tooling, component reusability
 
 ## Storage System
 
@@ -491,10 +498,19 @@ class LLMAnalyzer:
 ## Web Interface
 
 ### Technology Stack
-- **Frontend**: React.js and vanilla JavaScript for testing
-- **Styling**: Custom CSS with CSS Grid and Flexbox
-- **Backend**: Python HTTP server with custom routing
-- **Communication**: RESTful API with JSON responses
+- **Frontend**: React.js with TypeScript and Vite build system
+- **Styling**: Tailwind CSS with responsive design
+- **Backend**: Flask + Flask-RESTX with Swagger documentation
+- **API**: RESTful API with automatic OpenAPI documentation
+- **Architecture**: Clean architecture with dependency injection
+- **Testing**: pytest with Flask test client integration
+
+### Flask API Architecture
+- **Blueprints**: Modular route organization (screenshots, monitoring, configuration, analysis)
+- **Middleware**: Error handling, validation, security headers, logging
+- **Models**: Swagger models for automatic API documentation
+- **DI Integration**: Direct container access replacing Flask-Injector
+- **CORS**: Configured for frontend development and production
 
 ### Interface Components
 
@@ -679,7 +695,7 @@ The WSL PowerShell bridge handles multi-monitor through:
 
 1. **Virtual Screen Detection**:
    ```powershell
-   $VScreen = [System.Windows.Forms.SystemInformation]::VirtualScreen
+   $VScreen = [System.Windows.Forms]::VirtualScreen
    # Gets the bounding box of all monitors combined
    ```
 
@@ -757,4 +773,5 @@ python debug_multimonitor.py
 - **DPI Awareness**: Handle different DPI scaling factors properly
 
 ---
+
 *This design document serves as the single source of truth for understanding ScreenAgent's architecture, features, and implementation details. It should be updated as the system evolves and new features are added.*
