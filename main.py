@@ -1,50 +1,87 @@
 """
 ScreenAgent Core Application
-Refactored for better organization and maintainability
+Refactored with clean architecture and dependency injection
 """
 import os
 import sys
-import asyncio
 import threading
-import socketserver
-from datetime import datetime
-from typing import Optional, List, Tuple
 import signal
+from typing import Optional
 
 # Add the current directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
-# Updated imports for restructured codebase
-import sys
-import os
-
-# For now, use direct imports to avoid complex module loading
+# For module loading
 sys.path.append('src')
 sys.path.append('src/core')
 sys.path.append('src/core/config')
 
-from src.core.config.config import Config
-from src.core.storage.screenshot_manager_unified import ScreenshotManager  # Using unified manager
-from src.core.monitoring.roi_monitor import ROIMonitor
-from src.api.server import ScreenAgentServer
-from src.utils.keyboard_handler import KeyboardHandler
+from src.infrastructure.dependency_injection import get_container, setup_container
+from src.domain.interfaces.screenshot_service import IScreenshotService
+from src.domain.interfaces.monitoring_service import IMonitoringService
+from src.utils.platform_detection import is_wsl, is_windows, is_linux_with_display
 
 
 class ScreenAgentApp:
     """Main application class for ScreenAgent"""
     
     def __init__(self):
-        self.config = Config()
-        self.screenshot_manager = ScreenshotManager(self.config)
-        self.roi_monitor = ROIMonitor(self.config)
-        self.server = ScreenAgentServer(self.screenshot_manager, self.roi_monitor, self.config)
-        self.keyboard_handler = KeyboardHandler(self.screenshot_manager)
+        print("🔧 Initializing ScreenAgent...")
+        
+        # Initialize DI container with configuration
+        print("🏗️  Setting up dependency injection container...")
+        try:
+            # Detect platform
+            if is_wsl():
+                platform_name = "wsl"
+            elif is_windows():
+                platform_name = "windows"
+            elif is_linux_with_display():
+                platform_name = "linux"
+            else:
+                platform_name = "unknown"
+            
+            # Basic configuration dictionary for DI container
+            config_dict = {
+                "storage": {
+                    "type": "file",
+                    "base_path": "screenshots"
+                },
+                "monitoring": {
+                    "default_strategy": "threshold",
+                    "threshold": 20
+                },
+                "capture": {
+                    "platform": platform_name,
+                    "wsl_enabled": is_wsl()
+                },
+                "server": {
+                    "port": 8000,
+                    "max_port_attempts": 10
+                },
+                "config_file": "config/screen_agent_config.json"
+            }
+            
+            setup_container(config_dict)
+            print("✅ Dependency injection container initialized")
+            
+            # Get clean architecture services from container
+            container = get_container()
+            self.screenshot_service = container.get(IScreenshotService)
+            self.monitoring_service = container.get(IMonitoringService)
+            
+            # Create server with clean architecture (no legacy dependencies needed)
+            from src.api.server import ScreenAgentServer
+            self.server = ScreenAgentServer()
+            
+        except Exception as e:
+            print(f"❌ Failed to initialize clean architecture: {e}")
+            print("    Application cannot start without proper dependency injection")
+            raise
         
         self._running = False
         self._server_thread = None
-        self._monitor_thread = None
-        self._keyboard_thread = None
     
     def start(self):
         """Start the ScreenAgent application"""
@@ -55,21 +92,19 @@ class ScreenAgentApp:
         signal.signal(signal.SIGTERM, self._signal_handler)
         
         try:
-            # Initialize screenshot manager
-            if not self.screenshot_manager.initialize():
-                print("❌ Failed to initialize screenshot functionality")
-                return False
+            # Services are already initialized via DI container
+            print("✅ Services initialized via dependency injection")
             
             # Start the web server
             if not self._start_server():
                 print("❌ Failed to start web server")
                 return False
             
-            # Start ROI monitoring
-            # self._start_roi_monitor()
+            # ROI monitoring is now handled by the clean architecture services
+            print("✅ ROI monitoring available through clean architecture services")
             
-            # Start keyboard handler if available
-            self._start_keyboard_handler()
+            # TODO: Start keyboard handler once it's integrated with clean architecture
+            # self._start_keyboard_handler()
             
             self._running = True
             print(f"✅ ScreenAgent is running at http://localhost:{self.server.port}")
@@ -97,13 +132,7 @@ class ScreenAgentApp:
         print("\n🛑 Stopping ScreenAgent...")
         self._running = False
         
-        # Stop all components
-        if self.roi_monitor:
-            self.roi_monitor.stop()
-        
-        if self.keyboard_handler:
-            self.keyboard_handler.stop()
-        
+        # Stop server
         if self.server:
             self.server.stop()
         
@@ -130,35 +159,44 @@ class ScreenAgentApp:
             print(f"Error starting server: {e}")
             return False
     
-    def _start_roi_monitor(self):
-        """Start ROI monitoring in a separate thread"""
-        self._monitor_thread = threading.Thread(
-            target=self.roi_monitor.start,
-            daemon=True
-        )
-        self._monitor_thread.start()
-    
     def _start_keyboard_handler(self):
-        """Start keyboard handler if available"""
-        if self.keyboard_handler.is_available():
-            self._keyboard_thread = threading.Thread(
-                target=self.keyboard_handler.start,
-                daemon=True
-            )
-            self._keyboard_thread.start()
-        else:
-            print("⚠️  Keyboard shortcuts not available (requires root permissions on Linux)")
+        """Start keyboard handler if available (disabled for clean architecture)"""
+        # TODO: Reimplement keyboard handler with clean architecture
+        pass
     
     def _take_initial_screenshot(self):
-        """Take an initial screenshot"""
+        """Take an initial screenshot using clean architecture"""
         try:
-            roi = self.config.get('roi')
+            import asyncio
+            
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Get configuration from DI container
+            container = get_container()
+            from src.domain.repositories.configuration_repository import IConfigurationRepository
+            config_repo = container.get(IConfigurationRepository)
+            
+            # Get ROI from configuration
+            roi = loop.run_until_complete(config_repo.get_config("roi"))
+            
+            # Use clean architecture screenshot service
             if roi:
-                screenshot = self.screenshot_manager.take_screenshot(roi)
-                if screenshot:
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    self.screenshot_manager.add_screenshot(timestamp, screenshot)
-                    print(f"📸 Initial screenshot taken at {timestamp}")
+                from src.domain.value_objects.coordinates import Rectangle
+                region = Rectangle(left=roi[0], top=roi[1], right=roi[2], bottom=roi[3])
+                screenshot = loop.run_until_complete(
+                    self.screenshot_service.capture_region(region)
+                )
+            else:
+                screenshot = loop.run_until_complete(
+                    self.screenshot_service.capture_full_screen()
+                )
+            
+            if screenshot:
+                print(f"📸 Initial screenshot taken: {screenshot.id}")
         except Exception as e:
             print(f"⚠️  Failed to take initial screenshot: {e}")
     
@@ -176,16 +214,9 @@ class ScreenAgentApp:
         self._running = False
     
     def _join_threads(self):
-        """Wait for all threads to finish"""
-        threads = [
-            self._server_thread,
-            self._monitor_thread,
-            self._keyboard_thread
-        ]
-        
-        for thread in threads:
-            if thread and thread.is_alive():
-                thread.join(timeout=5)
+        """Wait for server thread to finish"""
+        if self._server_thread and self._server_thread.is_alive():
+            self._server_thread.join(timeout=5)
 
 
 def main():

@@ -1,5 +1,6 @@
 """
-Modern web server for ScreenAgent with improved API and UI
+Modern web server for ScreenAgent with clean architecture
+Uses dependency injection and controllers for all operations
 """
 import os
 import json
@@ -7,24 +8,54 @@ import socket
 import threading
 import http.server
 import socketserver
+import asyncio
 from datetime import datetime
 from typing import Optional, Dict, Any
 from urllib.parse import urlparse, parse_qs
 
-from ..core.config import Config
-from ..core.storage import ScreenshotManager
-from ..core.monitoring import ROIMonitor
-from .llm_api import LLMAnalyzer
+from ..infrastructure.dependency_injection.container import get_container
+from ..interfaces.controllers import (
+    ScreenshotController,
+    MonitoringController,
+    AnalysisController,
+    ConfigurationController
+)
 
 
 class ScreenAgentServer:
-    """Modern HTTP server for ScreenAgent"""
+    """Modern HTTP server for ScreenAgent with clean architecture"""
     
-    def __init__(self, screenshot_manager: ScreenshotManager, roi_monitor: ROIMonitor, config: Config):
-        self.screenshot_manager = screenshot_manager
-        self.roi_monitor = roi_monitor
-        self.config = config
-        self.llm_analyzer = LLMAnalyzer(config)
+    def __init__(self):
+        """Initialize server with clean architecture dependency injection"""
+        # Get services from DI container
+        try:
+            container = get_container()
+            
+            # Get services from container
+            from ..domain.interfaces.screenshot_service import IScreenshotService
+            from ..domain.interfaces.monitoring_service import IMonitoringService
+            from ..domain.interfaces.analysis_service import IAnalysisService
+            from ..domain.repositories.configuration_repository import IConfigurationRepository
+            
+            screenshot_service = container.get(IScreenshotService)
+            monitoring_service = container.get(IMonitoringService)
+            analysis_service = container.get(IAnalysisService)
+            configuration_repository = container.get(IConfigurationRepository)
+            
+            # Initialize controllers
+            self.screenshot_controller = ScreenshotController(screenshot_service, analysis_service)
+            self.monitoring_controller = MonitoringController(monitoring_service, screenshot_service)
+            self.analysis_controller = AnalysisController(analysis_service, screenshot_service)
+            self.configuration_controller = ConfigurationController(configuration_repository)
+            
+            # Get configuration from repository
+            config_dict = asyncio.run(configuration_repository.get_all_config())
+            self.config = config_dict
+            
+        except Exception as e:
+            print(f"❌ Failed to initialize clean architecture: {e}")
+            raise Exception(f"Server initialization failed: {e}")
+        
         self.port = None
         self.httpd = None
         
@@ -41,9 +72,9 @@ class ScreenAgentServer:
     def find_available_port(self, start_port: int = None) -> Optional[int]:
         """Find an available port for the server"""
         if start_port is None:
-            start_port = self.config.port
+            start_port = self.config.get("server", {}).get("port", 8000)
         
-        max_attempts = self.config.max_port_attempts
+        max_attempts = self.config.get("server", {}).get("max_port_attempts", 10)
         
         for port in range(start_port, start_port + max_attempts):
             try:
@@ -79,11 +110,13 @@ class ScreenAgentServer:
             print("🌐 Web server stopped")
     
     def _create_handler_class(self):
-        """Create a custom handler class with access to our managers"""
-        screenshot_manager = self.screenshot_manager
-        roi_monitor = self.roi_monitor
+        """Create a custom handler class with access to controllers"""
+        # Clean architecture controllers
+        screenshot_controller = self.screenshot_controller
+        monitoring_controller = self.monitoring_controller
+        analysis_controller = self.analysis_controller
+        configuration_controller = self.configuration_controller
         config = self.config
-        llm_analyzer = self.llm_analyzer
         static_dir = self.static_dir
         templates_dir = self.templates_dir
         
@@ -160,20 +193,27 @@ class ScreenAgentServer:
             def _serve_roi_selection(self):
                 """Serve the ROI selection page"""
                 try:
-                    # Take a full screenshot for ROI selection
+                    # Take a full screenshot for ROI selection using controller
                     print("📸 Taking screenshot for ROI selection...")
-                    success = screenshot_manager.take_full_screenshot(save_to_temp=True)
-                    if not success:
-                        print("❌ Failed to take screenshot for ROI selection")
-                    else:
+                    result = self._call_controller_async(
+                        screenshot_controller.capture_full_screen,
+                        {'save_to_temp': True}
+                    )
+                    
+                    if result.get('success'):
                         print("✅ Screenshot taken successfully for ROI selection")
+                    else:
+                        print("❌ Failed to take screenshot for ROI selection")
                     
                     template_path = os.path.join(templates_dir, 'select_roi.html')
                     with open(template_path, 'r', encoding='utf-8') as f:
                         content = f.read()
                     
-                    # Replace template variables
-                    current_roi = list(config.roi)
+                    # Get current ROI from configuration
+                    config_result = self._call_controller_async(
+                        configuration_controller.get_configuration, {}
+                    )
+                    current_roi = config_result.get('configuration', {}).get('roi', [0, 0, 100, 100])
                     current_roi_str = f"({current_roi[0]}, {current_roi[1]}, {current_roi[2]}, {current_roi[3]})"
                     current_roi_js = json.dumps(current_roi)
                     
@@ -226,9 +266,41 @@ class ScreenAgentServer:
                 try:
                     # Extract screenshot index from path
                     index_str = path.split('/')[-1]
-                    index = int(index_str)
                     
-                    screenshot_data = screenshot_manager.get_screenshot_data(index)
+                    # If it's a number, treat it as legacy index
+                    # Otherwise, treat it as screenshot ID
+                    try:
+                        index = int(index_str)
+                        # Get all screenshots to find by index
+                        result = self._call_controller_async(
+                            screenshot_controller.get_screenshots, {}
+                        )
+                        
+                        if not result.get('success'):
+                            self._send_404()
+                            return
+                        
+                        screenshots = result.get('screenshots', [])
+                        if 0 <= index < len(screenshots):
+                            screenshot_id = screenshots[index]['id']
+                        else:
+                            self._send_404()
+                            return
+                    except ValueError:
+                        # Treat as screenshot ID
+                        screenshot_id = index_str
+                    
+                    # Get screenshot data using ID
+                    result = self._call_controller_async(
+                        screenshot_controller.get_screenshot_by_id,
+                        screenshot_id
+                    )
+                    
+                    if not result.get('success'):
+                        self._send_404()
+                        return
+                    
+                    screenshot_data = result.get('screenshot', {}).get('data')
                     if not screenshot_data:
                         self._send_404()
                         return
@@ -239,8 +311,6 @@ class ScreenAgentServer:
                     self.end_headers()
                     self.wfile.write(screenshot_data)
                     
-                except (ValueError, IndexError):
-                    self._send_404()
                 except Exception as e:
                     print(f"Error serving screenshot: {e}")
                     self._send_500()
@@ -248,9 +318,13 @@ class ScreenAgentServer:
             def _serve_temp_screenshot(self):
                 """Serve the temporary screenshot for ROI selection"""
                 try:
-                    temp_path = config.temp_screenshot_path
+                    # Get temp screenshot path from configuration
+                    config_result = self._call_controller_async(
+                        configuration_controller.get_configuration, {}
+                    )
+                    temp_path = config_result.get('configuration', {}).get('temp_screenshot_path')
                     
-                    if not os.path.exists(temp_path):
+                    if not temp_path or not os.path.exists(temp_path):
                         self._send_404()
                         return
                     
@@ -268,46 +342,139 @@ class ScreenAgentServer:
                     self._send_404()
             
             def _handle_api_get(self, path: str):
-                """Handle API GET requests"""
-                if path == '/api/screenshots':
-                    self._api_get_screenshots()
-                elif path == '/api/status':
-                    self._api_get_status()
-                elif path == '/api/settings':
-                    self._api_get_settings()
-                elif path == '/api/roi':
-                    self._api_get_roi()
-                elif path == '/api/preview':
-                    self._api_get_preview()
-                else:
-                    self._send_404()
+                """Handle API GET requests using controllers"""
+                try:
+                    if path == '/api/screenshots':
+                        response = self._call_controller_async(
+                            screenshot_controller.get_screenshots, {}
+                        )
+                        self._send_json(response)
+                    elif path == '/api/status':
+                        response = self._call_controller_async(
+                            monitoring_controller.get_status
+                        )
+                        self._send_json(response)
+                    elif path == '/api/settings':
+                        response = self._call_controller_async(
+                            configuration_controller.get_configuration, {}
+                        )
+                        self._send_json(response)
+                    elif path == '/api/roi':
+                        # Get ROI from configuration
+                        config_result = self._call_controller_async(
+                            configuration_controller.get_configuration, {}
+                        )
+                        roi = config_result.get('configuration', {}).get('roi', [0, 0, 100, 100])
+                        self._send_json({'success': True, 'roi': roi})
+                    elif path == '/api/preview':
+                        self._api_get_preview()
+                    else:
+                        self._send_404()
+                except Exception as e:
+                    print(f"Error in API GET handler: {e}")
+                    self._send_json({'success': False, 'error': str(e)}, 500)
             
             def _handle_api_post(self, path: str):
-                """Handle API POST requests"""
-                if path == '/api/trigger':
-                    self._api_trigger_screenshot()
-                elif path == '/api/analyze':
-                    self._api_analyze_screenshot()
-                elif path == '/api/settings':
-                    self._api_save_settings()
-                elif path == '/api/monitor/settings':
-                    self._api_save_monitor_settings()
-                elif path == '/api/monitoring/start':
-                    self._api_start_monitoring()
-                elif path == '/api/monitoring/stop':
-                    self._api_stop_monitoring()
-                else:
-                    self._send_404()
+                """Handle API POST requests using controllers"""
+                try:
+                    data = self._parse_json_body()
+                    
+                    if path == '/api/trigger':
+                        response = self._call_controller_async(
+                            screenshot_controller.capture_full_screen, data or {}
+                        )
+                        self._send_json(response)
+                    elif path == '/api/analyze':
+                        response = self._call_controller_async(
+                            analysis_controller.analyze_screenshot, data or {}
+                        )
+                        self._send_json(response)
+                    elif path == '/api/settings':
+                        response = self._call_controller_async(
+                            configuration_controller.update_configuration, 
+                            {'configuration': data} if data else {}
+                        )
+                        self._send_json(response)
+                    elif path == '/api/monitor/settings':
+                        # Legacy monitoring settings - delegate to monitoring controller
+                        response = self._call_controller_async(
+                            monitoring_controller.update_settings, data or {}
+                        )
+                        self._send_json(response)
+                    elif path == '/api/monitoring/start':
+                        response = self._call_controller_async(
+                            monitoring_controller.start_monitoring, data or {}
+                        )
+                        self._send_json(response)
+                    elif path == '/api/monitoring/stop':
+                        response = self._call_controller_async(
+                            monitoring_controller.stop_monitoring, data or {}
+                        )
+                        self._send_json(response)
+                    else:
+                        self._send_404()
+                except Exception as e:
+                    print(f"Error in API POST handler: {e}")
+                    self._send_json({'success': False, 'error': str(e)}, 500)
             
             def _handle_api_delete(self, path: str):
-                """Handle API DELETE requests"""
-                if path == '/api/screenshots':
-                    self._api_delete_all_screenshots()
-                else:
-                    self._send_404()
+                """Handle API DELETE requests using controllers"""
+                try:
+                    if path == '/api/screenshots':
+                        response = self._call_controller_async(
+                            screenshot_controller.delete_all_screenshots
+                        )
+                        self._send_json(response)
+                    else:
+                        self._send_404()
+                except Exception as e:
+                    print(f"Error in API DELETE handler: {e}")
+                    self._send_json({'success': False, 'error': str(e)}, 500)
             
+            # Helper methods
+            def _call_controller_async(self, controller_method, data=None):
+                """Call an async controller method synchronously"""
+                import asyncio
+                try:
+                    # Create a new event loop for this thread if none exists
+                    try:
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    
+                    # Run the async method with or without data
+                    if data is not None:
+                        return loop.run_until_complete(controller_method(data))
+                    else:
+                        return loop.run_until_complete(controller_method())
+                except Exception as e:
+                    print(f"Error calling controller method: {e}")
+                    return {'success': False, 'error': str(e)}
+            
+            def _api_get_preview(self):
+                """Get preview screenshot using controller"""
+                try:
+                    result = self._call_controller_async(
+                        screenshot_controller.get_preview,
+                        {}
+                    )
+                    
+                    if result:
+                        self.send_response(200)
+                        self.send_header('Content-type', 'image/png')
+                        self.send_header('Cache-Control', 'no-cache')
+                        self.end_headers()
+                        self.wfile.write(result)
+                    else:
+                        self._send_404()
+                except Exception as e:
+                    print(f"Error getting preview: {e}")
+                    self._send_500()
+            
+            # Helper method for handling ROI updates
             def _handle_set_roi(self):
-                """Handle ROI setting (legacy endpoint)"""
+                """Handle ROI setting using configuration controller"""
                 try:
                     content_length = int(self.headers.get('Content-Length', 0))
                     if content_length > 0:
@@ -320,17 +487,29 @@ class ScreenAgentServer:
                             # Validate ROI
                             left, top, right, bottom = roi
                             if left < right and top < bottom and right - left >= 10 and bottom - top >= 10:
-                                config.roi = roi
-                                self._send_json({'success': True, 'roi': list(roi)})
+                                # Update ROI using configuration controller
+                                result = self._call_controller_async(
+                                    configuration_controller.update_configuration,
+                                    {'configuration': {'roi': list(roi)}}
+                                )
                                 
-                                # Clean up temp screenshot
-                                temp_path = config.temp_screenshot_path
-                                if os.path.exists(temp_path):
-                                    try:
-                                        os.remove(temp_path)
-                                    except:
-                                        pass
-                                return
+                                if result.get('success'):
+                                    self._send_json({'success': True, 'roi': list(roi)})
+                                    
+                                    # Clean up temp screenshot
+                                    config_result = self._call_controller_async(
+                                        configuration_controller.get_configuration, {}
+                                    )
+                                    temp_path = config_result.get('configuration', {}).get('temp_screenshot_path')
+                                    if temp_path and os.path.exists(temp_path):
+                                        try:
+                                            os.remove(temp_path)
+                                        except:
+                                            pass
+                                    return
+                                else:
+                                    self._send_json({'success': False, 'error': 'Failed to update ROI'}, 500)
+                                    return
                     
                     self._send_json({'success': False, 'error': 'Invalid ROI'}, 400)
                     
@@ -338,216 +517,6 @@ class ScreenAgentServer:
                     print(f"Error setting ROI: {e}")
                     self._send_json({'success': False, 'error': str(e)}, 500)
             
-            # API endpoint implementations
-            def _api_get_screenshots(self):
-                """Get all screenshots"""
-                try:
-                    screenshots = screenshot_manager.get_all_screenshots()
-                    status = roi_monitor.get_status()
-                    
-                    self._send_json({
-                        'success': True,
-                        'screenshots': screenshots,
-                        'status': {
-                            'active': status['active'],
-                            'screenshot_count': len(screenshots),
-                            'last_capture': screenshots[-1]['timestamp'] if screenshots else 'Never'
-                        }
-                    })
-                except Exception as e:
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_get_status(self):
-                """Get system status"""
-                try:
-                    roi_status = roi_monitor.get_status()
-                    monitoring_status = screenshot_manager.is_monitoring()
-                    screenshot_count = screenshot_manager.get_screenshot_count()
-                    
-                    status = {
-                        'roi_monitor': roi_status,
-                        'monitoring_active': monitoring_status,
-                        'screenshot_count': screenshot_count,
-                        'has_roi': bool(config.roi)
-                    }
-                    
-                    self._send_json({'success': True, 'status': status})
-                except Exception as e:
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_get_settings(self):
-                """Get current settings"""
-                try:
-                    settings = {
-                        'enabled': config.llm_enabled,
-                        'model': config.llm_model,
-                        'prompt': config.llm_prompt
-                    }
-                    self._send_json({'success': True, 'settings': settings})
-                except Exception as e:
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_get_roi(self):
-                """Get current ROI"""
-                try:
-                    self._send_json({'success': True, 'roi': list(config.roi)})
-                except Exception as e:
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_get_preview(self):
-                """Get preview screenshot"""
-                try:
-                    preview_data = screenshot_manager.take_screenshot(save_to_temp=False)
-                    if preview_data:
-                        self.send_response(200)
-                        self.send_header('Content-type', 'image/png')
-                        self.send_header('Cache-Control', 'no-cache')
-                        self.end_headers()
-                        self.wfile.write(preview_data)
-                    else:
-                        self._send_404()
-                except Exception as e:
-                    print(f"Error getting preview: {e}")
-                    self._send_500()
-            
-            def _api_trigger_screenshot(self):
-                """Trigger a manual screenshot"""
-                try:
-                    # Use unified method to ensure consistency with preview
-                    roi = config.roi
-                    screenshot = screenshot_manager.take_unified_roi_screenshot(roi)
-                    if screenshot:
-                        # Add to screenshot manager's collection
-                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        screenshot_manager.add_screenshot(timestamp, screenshot, {
-                            'manual': True,
-                            'roi': roi,
-                            'method': 'unified_roi'
-                        })
-                        self._send_json({'success': True, 'message': 'Screenshot captured'})
-                    else:
-                        self._send_json({'success': False, 'error': 'Failed to capture screenshot'}, 500)
-                except Exception as e:
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_analyze_screenshot(self):
-                """Analyze a screenshot with AI"""
-                try:
-                    data = self._parse_json_body()
-                    if not data:
-                        self._send_json({'success': False, 'error': 'Invalid request data'}, 400)
-                        return
-                    
-                    screenshot_idx = data.get('screenshot_idx')
-                    custom_prompt = data.get('prompt')
-                    
-                    if screenshot_idx is None:
-                        self._send_json({'success': False, 'error': 'screenshot_idx required'}, 400)
-                        return
-                    
-                    # Get screenshot data
-                    screenshot_data = screenshot_manager.get_screenshot_data(screenshot_idx)
-                    if not screenshot_data:
-                        self._send_json({'success': False, 'error': 'Screenshot not found'}, 404)
-                        return
-                    
-                    # Analyze with LLM
-                    response = llm_analyzer.analyze_image(screenshot_data, custom_prompt)
-                    
-                    if response:
-                        # Store the response
-                        screenshot_manager.set_llm_response(screenshot_idx, response)
-                        self._send_json({'success': True, 'response': response})
-                    else:
-                        self._send_json({'success': False, 'error': 'LLM analysis failed'}, 500)
-                    
-                except Exception as e:
-                    print(f"Error analyzing screenshot: {e}")
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_save_settings(self):
-                """Save LLM settings"""
-                try:
-                    data = self._parse_json_body()
-                    if not data:
-                        self._send_json({'success': False, 'error': 'Invalid request data'}, 400)
-                        return
-                    
-                    if 'enabled' in data:
-                        config.llm_enabled = bool(data['enabled'])
-                    if 'model' in data:
-                        config.llm_model = str(data['model'])
-                    if 'prompt' in data:
-                        config.llm_prompt = str(data['prompt'])
-                    
-                    self._send_json({'success': True, 'message': 'Settings saved'})
-                    
-                except Exception as e:
-                    print(f"Error saving settings: {e}")
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_save_monitor_settings(self):
-                """Save monitoring settings"""
-                try:
-                    data = self._parse_json_body()
-                    if not data:
-                        self._send_json({'success': False, 'error': 'Invalid request data'}, 400)
-                        return
-                    
-                    success = roi_monitor.update_settings(data)
-                    
-                    if success:
-                        self._send_json({'success': True, 'message': 'Monitor settings saved'})
-                    else:
-                        self._send_json({'success': False, 'error': 'Failed to save settings'}, 500)
-                    
-                except Exception as e:
-                    print(f"Error saving monitor settings: {e}")
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_delete_all_screenshots(self):
-                """Delete all screenshots"""
-                try:
-                    success = screenshot_manager.clear_all_screenshots()
-                    
-                    if success:
-                        self._send_json({'success': True, 'message': 'All screenshots deleted successfully'})
-                    else:
-                        self._send_json({'success': False, 'error': 'Failed to delete screenshots'}, 500)
-                        
-                except Exception as e:
-                    print(f"Error deleting all screenshots: {e}")
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_start_monitoring(self):
-                """Start ROI monitoring"""
-                try:
-                    if not config.roi:
-                        self._send_json({'success': False, 'error': 'No ROI configured. Please select a region first.'}, 400)
-                        return
-                    
-                    success = screenshot_manager.start_roi_monitoring(config.roi)
-                    
-                    if success:
-                        self._send_json({'success': True, 'message': 'ROI monitoring started successfully'})
-                    else:
-                        self._send_json({'success': False, 'error': 'Failed to start monitoring'}, 500)
-                        
-                except Exception as e:
-                    print(f"Error starting monitoring: {e}")
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            def _api_stop_monitoring(self):
-                """Stop ROI monitoring"""
-                try:
-                    screenshot_manager.stop_roi_monitoring()
-                    self._send_json({'success': True, 'message': 'ROI monitoring stopped successfully'})
-                        
-                except Exception as e:
-                    print(f"Error stopping monitoring: {e}")
-                    self._send_json({'success': False, 'error': str(e)}, 500)
-            
-            # Helper methods
             def _parse_json_body(self):
                 """Parse JSON from request body"""
                 try:

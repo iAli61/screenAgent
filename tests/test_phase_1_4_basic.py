@@ -58,30 +58,29 @@ def test_basic_functionality():
         print(f"❌ Test 2: Storage Manager - FAILED: {e}")
         tests_failed += 1
     
-    # Test 3: Screenshot Manager Refactored (without initialization)
+    # Test 3: Clean Architecture DI Container
     try:
-        from src.core.screenshot_manager_refactored import ScreenshotManagerRefactored
+        from src.infrastructure.dependency_injection import setup_container
+        from src.domain.interfaces.screenshot_service import IScreenshotService
         
-        manager = ScreenshotManagerRefactored(config)
+        config_dict = {
+            "storage": {"type": "memory", "base_path": "test"},
+            "monitoring": {"default_strategy": "threshold", "threshold": 30},
+            "capture": {"platform": "linux", "wsl_enabled": False}
+        }
         
-        # Test without initialization (should handle gracefully)
-        if not manager.is_initialized():
-            if manager.get_screenshot_count() == 0:
-                if not manager.get_screenshots():
-                    print("✅ Test 3: Screenshot Manager - PASSED")
-                    tests_passed += 1
-                else:
-                    print("❌ Test 3: Screenshot Manager - FAILED: Should return empty list")
-                    tests_failed += 1
-            else:
-                print("❌ Test 3: Screenshot Manager - FAILED: Count should be 0")
-                tests_failed += 1
+        container = setup_container(config_dict)
+        screenshot_service = container.get(IScreenshotService)
+        
+        if screenshot_service:
+            print("✅ Test 3: Clean Architecture DI - PASSED")
+            tests_passed += 1
         else:
-            print("❌ Test 3: Screenshot Manager - FAILED: Should not be initialized")
+            print("❌ Test 3: Clean Architecture DI - FAILED: No service returned")
             tests_failed += 1
             
     except Exception as e:
-        print(f"❌ Test 3: Screenshot Manager - FAILED: {e}")
+        print(f"❌ Test 3: Clean Architecture DI - FAILED: {e}")
         tests_failed += 1
     
     return tests_passed, tests_failed

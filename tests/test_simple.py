@@ -1,38 +1,53 @@
 #!/usr/bin/env python3
 """
-Simple test to verify the refactored screenshot capture module works
+Simple test to verify the clean architecture works
 """
 import sys
 import os
 
 # Add the current directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
+project_root = os.path.dirname(current_dir)
+sys.path.insert(0, project_root)
+sys.path.append(os.path.join(project_root, 'src'))
 
-print("Testing refactored screenshot capture...")
+print("Testing clean architecture components...")
 
 try:
-    from src.core.config import Config
+    from src.core.config.config import Config
     print("✅ Config import successful")
 except ImportError as e:
     print(f"❌ Config import failed: {e}")
 
 try:
-    from src.core.capture_interfaces import CaptureMethod, ScreenshotCaptureFactory
-    print("✅ Capture interfaces import successful")
+    from src.infrastructure.dependency_injection import get_container, setup_container
+    print("✅ Dependency injection import successful")
 except ImportError as e:
-    print(f"❌ Capture interfaces import failed: {e}")
+    print(f"❌ Dependency injection import failed: {e}")
 
 try:
-    from src.core.capture_implementations import WSLPowerShellCapture
-    print("✅ Capture implementations import successful")
+    from src.domain.interfaces.screenshot_service import IScreenshotService
+    from src.domain.interfaces.monitoring_service import IMonitoringService
+    print("✅ Domain interfaces import successful")
 except ImportError as e:
-    print(f"❌ Capture implementations import failed: {e}")
+    print(f"❌ Domain interfaces import failed: {e}")
 
 try:
-    from src.core.capture.screenshot_capture import ScreenshotCaptureManager
-    print("✅ Screenshot capture manager import successful")
+    from src.application.services.screenshot_service import ScreenshotService
+    print("✅ Application services import successful")
 except ImportError as e:
-    print(f"❌ Screenshot capture manager import failed: {e}")
+    print(f"❌ Application services import failed: {e}")
+
+try:
+    from src.interfaces.controllers.screenshot_controller import ScreenshotController
+    print("✅ Controllers import successful")
+except ImportError as e:
+    print(f"❌ Controllers import failed: {e}")
+
+try:
+    from src.api.server import ScreenAgentServer
+    print("✅ Server import successful")
+except ImportError as e:
+    print(f"❌ Server import failed: {e}")
 
 print("Basic import test completed.")

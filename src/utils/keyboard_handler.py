@@ -4,14 +4,12 @@ Keyboard shortcut handler for ScreenAgent
 import threading
 from typing import Optional, Callable
 
-from ..core.config import Config
-
 
 class KeyboardHandler:
     """Handles keyboard shortcuts for taking manual screenshots"""
     
-    def __init__(self, screenshot_manager):
-        self.screenshot_manager = screenshot_manager
+    def __init__(self, screenshot_callback: Optional[Callable] = None):
+        self.screenshot_callback = screenshot_callback
         self._keyboard_available = False
         self._keyboard_module = None
         self._running = False
@@ -97,7 +95,10 @@ class KeyboardHandler:
     def _default_callback(self):
         """Default callback for keyboard shortcuts"""
         try:
-            # This would need to be connected to the ROI monitor
             print("📸 Keyboard shortcut triggered - taking screenshot")
+            if self.screenshot_callback:
+                self.screenshot_callback()
+            else:
+                print("⚠️  No screenshot callback configured")
         except Exception as e:
             print(f"Error in default keyboard callback: {e}")

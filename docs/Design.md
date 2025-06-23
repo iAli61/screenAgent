@@ -47,7 +47,7 @@ ScreenAgent is a modern, intelligent screen monitoring application designed to c
 - **Contextual Analysis**: Understanding of changes and their significance
 
 ### 4. Modern Web Interface
-- **Responsive Design**: Works on desktop and mobile devices
+- **Responsive Design**: Works just on desktop devices
 - **Real-time Updates**: Live status indicators and automatic refresh
 - **Gallery View**: Organized screenshot management with thumbnails
 - **Settings Panel**: Dynamic configuration without application restart
@@ -74,9 +74,13 @@ ScreenAgent is a modern, intelligent screen monitoring application designed to c
 ├─────────────────────────────────────────────────────────────┤
 │  HTML/CSS/JS Frontend  │  HTTP Server  │  REST API Routes  │
 ├─────────────────────────────────────────────────────────────┤
-│                     Service Layer                          │
+│                   Application Layer                        │
 ├─────────────────────────────────────────────────────────────┤
-│ Screenshot Manager │  ROI Monitor  │  Keyboard Handler    │
+│   Screenshot Service   │   Monitoring Service   │   Analysis Service   │
+├─────────────────────────────────────────────────────────────┤
+│                   Infrastructure Layer                     │
+├─────────────────────────────────────────────────────────────┤
+│  Storage Strategies  │  Detection Strategies  │  DI Container  │
 ├─────────────────────────────────────────────────────────────┤
 │                     Core Layer                             │
 ├─────────────────────────────────────────────────────────────┤
@@ -93,25 +97,84 @@ ScreenAgent is a modern, intelligent screen monitoring application designed to c
 ```mermaid
 graph TB
     A[Web Interface] --> B[HTTP Server]
-    B --> C[Screenshot Manager]
-    B --> D[ROI Monitor]
-    B --> E[LLM Analyzer]
+    B --> C[Controllers]
+    C --> D[Application Services]
     
-    C --> F[Screenshot Capture]
-    C --> G[Config Manager]
-    C --> H[Keyboard Handler]
+    D --> E[Screenshot Service]
+    D --> F[Monitoring Service]
+    D --> G[Analysis Service]
     
-    D --> F
-    D --> G
+    E --> H[Storage Strategies]
+    F --> I[Detection Strategies]
     
-    F --> I[Platform Detection]
-    F --> J[OS APIs]
+    I --> J[ThresholdDetector]
+    I --> K[PixelDiffDetector]
+    I --> L[HashComparisonDetector]
     
-    E --> K[OpenAI/Azure AI]
+    H --> M[FileStorageStrategy]
+    H --> N[MemoryStorageStrategy]
     
-    G --> L[JSON Config Files]
-    G --> M[Environment Variables]
+    E --> O[Screenshot Capture]
+    F --> O
+    
+    O --> P[Platform Detection]
+    O --> Q[OS APIs]
+    
+    G --> R[OpenAI/Azure AI]
+    
+    S[DI Container] --> D
+    S --> H
+    S --> I
+    
+    T[Event Bus] --> U[Domain Events]
+    F --> T
 ```
+
+## Refactored Architecture Patterns
+
+ScreenAgent has been refactored following clean architecture principles with several key patterns:
+
+#### **Strategy Pattern for Change Detection**
+```python
+# Multiple detection algorithms with runtime switching
+context = ChangeDetectionContext()
+context.set_strategy(ThresholdDetector())      # Fast, basic detection
+context.set_strategy(PixelDiffDetector())     # Accurate, intensive detection  
+context.set_strategy(HashComparisonDetector()) # Exact, binary detection
+```
+
+#### **Dependency Injection Container**
+```python
+# Service registration and resolution
+container = DIContainer()
+container.register_singleton(IScreenshotService, ScreenshotService)
+container.register_singleton(IMonitoringService, MonitoringService)
+
+# Automatic dependency resolution
+service = container.get(IScreenshotService)
+```
+
+#### **Event-Driven Architecture**
+```python
+# Domain events for monitoring lifecycle
+event_bus.publish(ChangeDetectionStartedEvent(strategy_name="threshold"))
+event_bus.publish(ChangeDetectionEvent(change_score=45.0))
+event_bus.publish(ChangeDetectionStoppedEvent(reason="manual"))
+```
+
+#### **Storage Strategy Pattern**
+```python
+# Pluggable storage backends
+storage_factory = StorageFactory()
+file_storage = storage_factory.create_storage("file", base_path="screenshots")
+memory_storage = storage_factory.create_storage("memory", max_screenshots=100)
+```
+
+#### **Clean Architecture Layers**
+- **Domain**: Entities, value objects, interfaces, events
+- **Application**: Business logic services, use cases
+- **Infrastructure**: External concerns (file system, detection algorithms)
+- **Interfaces**: Controllers, DTOs, API contracts
 
 ## Module Design
 
@@ -171,22 +234,34 @@ class ScreenshotCapture:
     - _capture_wsl()
 ```
 
-#### **ROI Monitor** (`roi_monitor.py`)
-- **Purpose**: Monitor region of interest for changes
+#### **ROI Monitor** (`roi_monitor.py` + `refactored_roi_monitor.py`)
+- **Purpose**: Monitor region of interest for changes using strategy pattern
+- **Architecture**: Refactored in Phase 2.6 with strategy pattern and event-driven design
 - **Responsibilities**:
-  - Continuous monitoring loop
-  - Change detection algorithms
-  - Callback management for change events
-  - Performance optimization
+  - Continuous monitoring loop with configurable detection strategies
+  - Event-driven change detection with domain events
+  - Thread-safe monitoring with proper lifecycle management
+  - Strategy switching for different detection algorithms
+  - Comprehensive statistics and history tracking
 
 ```python
-class ROIMonitor:
-    - start()
-    - stop()
-    - _check_for_changes()
+class RefactoredROIMonitor:
+    - start_monitoring(roi, strategy_name, threshold, check_interval)
+    - stop_monitoring(reason)
+    - change_strategy(strategy_name, reset_baseline)
+    - force_screenshot()
     - add_change_callback()
-    - get_statistics()
+    - get_status()
+    - get_available_strategies()
+    - update_settings()
 ```
+
+**Change Detection Strategies** (`src/infrastructure/monitoring/`):
+- **ThresholdDetector**: Fast size-based detection (default)
+- **PixelDiffDetector**: Accurate pixel-by-pixel comparison  
+- **HashComparisonDetector**: Exact change detection via hashing
+- **ChangeDetectionContext**: Strategy management and switching
+- **ChangeDetectionStrategyFactory**: Strategy creation and configuration
 
 #### **Keyboard Handler** (`keyboard_handler.py`)
 - **Purpose**: Global keyboard shortcut management
@@ -354,7 +429,7 @@ Screenshot → Encoding → API Call → Response → Parsing → Storage → Di
     ↓           ↓          ↓         ↓         ↓         ↓         ↓
 Base64      Format     OpenAI    JSON      Extract   File      WebUI
 Resize      Headers    Azure     Stream    Text      Metadata  Gallery
-Optimize    Auth       Claude    Error     Insights  JSON      Analysis
+Optimize    Auth       Claude    Error     Insights  JSON      Response
 Load File   Token      Models    Retry     Context   UUID      Response
 ```
 
@@ -416,7 +491,7 @@ class LLMAnalyzer:
 ## Web Interface
 
 ### Technology Stack
-- **Frontend**: Vanilla JavaScript (no framework dependencies)
+- **Frontend**: React.js and vanilla JavaScript for testing
 - **Styling**: Custom CSS with CSS Grid and Flexbox
 - **Backend**: Python HTTP server with custom routing
 - **Communication**: RESTful API with JSON responses

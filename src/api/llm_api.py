@@ -3,22 +3,35 @@ LLM integration for analyzing screenshots
 """
 import base64
 import io
-from typing import Optional
-
-from ..core.config import Config
+from typing import Optional, Dict, Any
 
 
 class LLMAnalyzer:
     """Handles AI-powered analysis of screenshots"""
     
-    def __init__(self, config: Config):
-        self.config = config
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
         self._client = None
         self._setup_client()
     
+    @property
+    def llm_enabled(self) -> bool:
+        """Check if LLM is enabled"""
+        return self.config.get('llm_enabled', False)
+    
+    @property
+    def llm_prompt(self) -> str:
+        """Get LLM prompt"""
+        return self.config.get('llm_prompt', 'Describe what you see in this screenshot.')
+    
+    @property
+    def llm_model(self) -> str:
+        """Get LLM model"""
+        return self.config.get('llm_model', 'gpt-4')
+    
     def _setup_client(self):
         """Setup the LLM client based on configuration"""
-        if not self.config.llm_enabled:
+        if not self.llm_enabled:
             return
         
         try:
@@ -78,7 +91,7 @@ class LLMAnalyzer:
     
     def analyze_image(self, image_data: bytes, custom_prompt: str = None) -> Optional[str]:
         """Analyze an image with AI"""
-        if not self._client or not self.config.llm_enabled:
+        if not self._client or not self.llm_enabled:
             return None
         
         try:
@@ -86,7 +99,7 @@ class LLMAnalyzer:
             image_base64 = base64.b64encode(image_data).decode('utf-8')
             
             # Use custom prompt or default
-            prompt = custom_prompt or self.config.llm_prompt
+            prompt = custom_prompt or self.llm_prompt
             
             if self._client_type == 'azure':
                 return self._analyze_with_azure(image_base64, prompt)
@@ -124,7 +137,7 @@ class LLMAnalyzer:
             ]
             
             response = self._client.complete(
-                model=self.config.llm_model,
+                model=self.llm_model,
                 messages=messages,
                 max_tokens=500,
                 temperature=0.3
@@ -142,7 +155,7 @@ class LLMAnalyzer:
         """Analyze image using OpenAI"""
         try:
             response = self._client.chat.completions.create(
-                model=self.config.llm_model,
+                model=self.llm_model,
                 messages=[
                     {
                         "role": "user",
@@ -174,4 +187,4 @@ class LLMAnalyzer:
     
     def is_available(self) -> bool:
         """Check if LLM analysis is available"""
-        return self._client is not None and self.config.llm_enabled
+        return self._client is not None and self.llm_enabled
