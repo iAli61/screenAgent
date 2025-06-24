@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { useTakeScreenshot, useScreenshots, useDeleteAllScreenshots, useAnalyzeScreenshot } from '../../services/screenshotApi';
+import { useTakeScreenshot, useScreenshots, useDeleteAllScreenshots, useDeleteScreenshot, useAnalyzeScreenshot } from '../../services/screenshotApi';
 import { useROI } from '../../contexts/ROIContext';
 import { ImageModal } from '../ui/ImageModal';
+import { ROIModal } from '../ui/ROIModal';
 import { useScreenshotStore } from '../../stores/useScreenshotStore';
 
 export function SingleScreenshot() {
   const { selectedROI } = useROI();
   const takeScreenshotMutation = useTakeScreenshot();
   const deleteAllMutation = useDeleteAllScreenshots();
+  const deleteScreenshotMutation = useDeleteScreenshot();
   const analyzeScreenshotMutation = useAnalyzeScreenshot();
   const { data: screenshotsData, isLoading, error, refetch } = useScreenshots();
   const { screenshots: storeScreenshots } = useScreenshotStore();
@@ -23,6 +25,7 @@ export function SingleScreenshot() {
       error?: string;
     };
   } | null>(null);
+  const [isROIModalOpen, setIsROIModalOpen] = useState(false);
 
   const handleTakeScreenshot = async () => {
     try {
@@ -44,6 +47,17 @@ export function SingleScreenshot() {
       await refetch();
     } catch (error) {
       console.error('Failed to delete all screenshots:', error);
+    }
+  };
+
+  const handleDeleteScreenshot = async (screenshotId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the image click
+    try {
+      await deleteScreenshotMutation.mutateAsync(screenshotId);
+      // Optionally refetch screenshots to update the UI
+      await refetch();
+    } catch (error) {
+      console.error('Failed to delete screenshot:', error);
     }
   };
 
@@ -163,8 +177,14 @@ export function SingleScreenshot() {
               ? '⏳ Taking...' 
               : selectedROI 
                 ? '📸 Take ROI Screenshot' 
-                : '📸 Take Full Screenshot'
+                : '📸 Take a Screenshot'
             }
+          </button>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setIsROIModalOpen(true)}
+          >
+            🎯 Select ROI
           </button>
           <button 
             className="btn btn-danger"
@@ -202,17 +222,30 @@ export function SingleScreenshot() {
             </div>
           ) : screenshotsData && screenshotsData.screenshots.length > 0 ? (
             screenshotsData.screenshots.map((screenshot) => (
-              <div key={screenshot.id} className="border rounded-lg p-4 bg-white shadow-sm">
-                <img 
-                  src={`http://localhost:8000/api/screenshots/${screenshot.id}`}
-                  alt={`Screenshot ${screenshot.id}`}
-                  className="w-full h-auto rounded mb-2 cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => handleImageClick(screenshot)}
-                  onError={(e) => {
-                    console.error('Image failed to load:', screenshot.id);
-                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY4NzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIGZhaWxlZCB0byBsb2FkPC90ZXh0Pjwvc3ZnPg==';
-                  }}
-                />
+              <div key={screenshot.id} className="border rounded-lg p-4 bg-white shadow-sm relative group">
+                <div className="relative">
+                  <img 
+                    src={`http://localhost:8000/api/screenshots/${screenshot.id}`}
+                    alt={`Screenshot ${screenshot.id}`}
+                    className="w-full h-auto rounded mb-2 cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => handleImageClick(screenshot)}
+                    onError={(e) => {
+                      console.error('Image failed to load:', screenshot.id);
+                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY4NzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIGZhaWxlZCB0byBsb2FkPC90ZXh0Pjwvc3ZnPg==';
+                    }}
+                  />
+                  {/* Delete Button */}
+                  <button
+                    onClick={(e) => handleDeleteScreenshot(screenshot.id, e)}
+                    className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-110"
+                    aria-label="Delete screenshot"
+                    disabled={deleteScreenshotMutation.isPending}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="text-sm text-gray-600 space-y-1">
                   <p className="font-medium">{screenshot.id.slice(0, 8)}...</p>
                   <p>{new Date(screenshot.timestamp).toLocaleString()}</p>
@@ -241,6 +274,12 @@ export function SingleScreenshot() {
           analysisData={selectedImage.analysis}
         />
       )}
+
+      {/* ROI Selection Modal */}
+      <ROIModal
+        isOpen={isROIModalOpen}
+        onClose={() => setIsROIModalOpen(false)}
+      />
     </div>
   )
 }

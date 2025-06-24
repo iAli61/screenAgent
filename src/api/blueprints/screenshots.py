@@ -201,6 +201,17 @@ class ScreenshotImage(Resource):
         except Exception as e:
             abort(500, description=f"Error retrieving screenshot: {str(e)}")
 
+    def delete(self, screenshot_id):
+        """Delete individual screenshot by ID"""
+        container = get_container()
+        screenshot_controller = container.get(ScreenshotController)
+        
+        try:
+            result = run_async(screenshot_controller.delete_screenshot(screenshot_id))
+            return result
+        except Exception as e:
+            abort(500, description=f"Error deleting screenshot: {str(e)}")
+
     def head(self, screenshot_id):
         """Handle HEAD requests for individual screenshots"""
         # Flask automatically handles HEAD by calling GET without body

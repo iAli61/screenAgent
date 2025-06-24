@@ -173,6 +173,26 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch(imageUrl);
+                    const blob = await response.blob();
+                    const clipboardItem = new ClipboardItem({ [blob.type]: blob });
+                    await navigator.clipboard.write([clipboardItem]);
+                    // You could add a toast notification here
+                  } catch (error) {
+                    console.error('Failed to copy image to clipboard:', error);
+                    // You could add an error toast notification here
+                  }
+                }}
+                className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg border transition-all duration-200 hover:scale-105"
+                title="Copy Image to Clipboard"
+              >
+                <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </button>
               <a
                 href={imageUrl}
                 download
