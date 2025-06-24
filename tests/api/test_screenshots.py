@@ -37,9 +37,9 @@ class TestScreenshotEndpoints:
         assert data['success'] is True
     
     def test_trigger_screenshot_success(self, client, api_headers):
-        """Test POST /api/screenshots/trigger captures screenshot"""
+        """Test POST /api/screenshots/take captures screenshot"""
         payload = {'metadata': {'test': 'data'}}
-        response = client.post('/api/screenshots/trigger', 
+        response = client.post('/api/screenshots/take', 
                               data=json.dumps(payload), 
                               headers=api_headers)
         
@@ -49,16 +49,16 @@ class TestScreenshotEndpoints:
         assert 'screenshot_id' in data
     
     def test_trigger_screenshot_no_content_type(self, client):
-        """Test POST /api/screenshots/trigger without content-type header"""
-        response = client.post('/api/screenshots/trigger')
+        """Test POST /api/screenshots/take without content-type header"""
+        response = client.post('/api/screenshots/take')
         
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data['success'] is True
     
     def test_trigger_screenshot_empty_json(self, client, api_headers):
-        """Test POST /api/screenshots/trigger with empty JSON"""
-        response = client.post('/api/screenshots/trigger', 
+        """Test POST /api/screenshots/take with empty JSON"""
+        response = client.post('/api/screenshots/take', 
                               data='{}', 
                               headers=api_headers)
         
@@ -124,7 +124,7 @@ class TestScreenshotErrorHandling:
     def test_invalid_json_handling(self, client):
         """Test handling of invalid JSON in request body"""
         headers = {'Content-Type': 'application/json'}
-        response = client.post('/api/screenshots/trigger', 
+        response = client.post('/api/screenshots/take', 
                               data='invalid json', 
                               headers=headers)
         

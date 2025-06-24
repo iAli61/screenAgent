@@ -98,22 +98,28 @@ class ScreenshotService(IScreenshotService):
                 data=capture_result.data  # Store binary data
             )
             
-            # Save to repository
-            await self._screenshot_repository.create(screenshot)
+            # Check if this is a temporary/preview screenshot
+            is_temporary = metadata and metadata.get('temporary', False)
             
-            # Save the actual image file
-            await self.save_screenshot(screenshot)
-            
-            # Publish event
-            event = ScreenshotCaptured(
-                screenshot_id=screenshot_id,
-                file_path=str(screenshot.file_path.path),
-                capture_method="full_screen",
-                monitor_id=monitor_id,
-                width=screenshot.width,
-                height=screenshot.height
-            )
-            await self._event_service.publish(event)
+            if not is_temporary:
+                # Save to repository
+                await self._screenshot_repository.create(screenshot)
+                
+                # Save the actual image file
+                await self.save_screenshot(screenshot)
+                
+                # Publish event
+                event = ScreenshotCaptured(
+                    screenshot_id=screenshot_id,
+                    file_path=str(screenshot.file_path.path),
+                    capture_method="full_screen",
+                    monitor_id=monitor_id,
+                    width=screenshot.width,
+                    height=screenshot.height
+                )
+                await self._event_service.publish(event)
+            else:
+                logger.info(f"Created temporary preview screenshot: {screenshot_id}")
             
             logger.info(f"Captured full screen screenshot: {screenshot_id}")
             return screenshot

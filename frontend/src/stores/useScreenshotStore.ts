@@ -39,6 +39,7 @@ interface ScreenshotState {
   setScreenshots: (screenshots: Screenshot[]) => void;
   addScreenshot: (screenshot: Screenshot) => void;
   removeScreenshot: (id: string) => void;
+  clearScreenshots: () => void;
   selectScreenshot: (screenshot: Screenshot | null) => void;
   updateScreenshot: (id: string, updates: Partial<Screenshot>) => void;
   
@@ -86,6 +87,13 @@ export const useScreenshotStore = create<ScreenshotState>()(
           screenshots: state.screenshots.filter(s => s.id !== id),
           selectedScreenshot: state.selectedScreenshot?.id === id ? null : state.selectedScreenshot
         }), false, 'removeScreenshot'),
+
+      clearScreenshots: () => 
+        set((state) => ({ 
+          ...state, 
+          screenshots: [],
+          selectedScreenshot: null
+        }), false, 'clearScreenshots'),
 
       selectScreenshot: (screenshot) => 
         set((state) => ({ ...state, selectedScreenshot: screenshot }), false, 'selectScreenshot'),

@@ -13,17 +13,6 @@ A modern, intelligent screen monitoring application that captures and analyzes c
 - **📊 Real-time Statistics**: Monitor uptime, capture count, and system performance
 - **🏗️ Modular Architecture**: Event-driven design with pluggable storage and capture backends 🎯
 
-A modern, intelligent screen monitoring application that captures and analyzes changes within user-defined regions of interest (ROI) using AI-powered analysis.
-
-## ✨ Key Features
-
-- **🎯 Smart ROI Monitoring**: Interactive region selection with real-time change detection
-- **🤖 AI-Powered Analysis**: Multi-provider AI integration (OpenAI GPT-4 Vision, Azure AI)
-- **🌐 Modern Web Interface**: Responsive dashboard with real-time updates and screenshot gallery
-- **📱 Cross-Platform**: Seamless operation on Linux, Windows, and WSL environments
-- **⚙️ Flexible Configuration**: Web-based settings with dynamic updates
-- **⌨️ Keyboard Shortcuts**: Global hotkeys for manual screenshot capture
-- **📊 Real-time Statistics**: Monitor uptime, capture count, and system performance
 
 > 📋 **For comprehensive feature details, system architecture, and design documentation, see [Design.md](./Design.md)**
 

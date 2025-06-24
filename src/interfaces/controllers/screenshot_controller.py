@@ -312,3 +312,135 @@ class ScreenshotController:
                 'success': False,
                 'error': str(e)
             }
+    
+    async def get_screenshot_image(self, screenshot_id: str) -> bytes:
+        """Get screenshot image data by ID"""
+        try:
+            screenshot = await self.screenshot_service.get_screenshot(screenshot_id)
+            if not screenshot:
+                return None
+            
+            # Read the image file
+            with open(screenshot.file_path.path, 'rb') as f:
+                return f.read()
+                
+        except Exception as e:
+            print(f"Error reading screenshot image {screenshot_id}: {e}")
+            return None
+    
+    async def capture_roi_region(self, roi_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Capture a screenshot of a specific ROI region by taking full screenshot and cropping"""
+        try:
+            # Extract ROI coordinates from the request
+            x = int(roi_data.get('x', 0))
+            y = int(roi_data.get('y', 0))
+            width = int(roi_data.get('width', 100))
+            height = int(roi_data.get('height', 100))
+            
+            print(f"DEBUG: Capturing ROI region at ({x}, {y}) with size {width}x{height}")
+            
+            # First, capture a temporary full screenshot to get the complete desktop
+            full_metadata = {'temporary': True, 'for_roi_crop': True}
+            full_screenshot = await self.screenshot_service.capture_full_screen(metadata=full_metadata)
+            
+            if not full_screenshot or not full_screenshot.data:
+                return {
+                    'success': False,
+                    'error': 'Failed to capture full screenshot for ROI cropping'
+                }
+            
+            print(f"DEBUG: Full screenshot captured: {full_screenshot.width}x{full_screenshot.height}")
+            
+            # Validate ROI coordinates against full screenshot dimensions
+            if x < 0 or y < 0 or x + width > full_screenshot.width or y + height > full_screenshot.height:
+                return {
+                    'success': False,
+                    'error': f'ROI coordinates ({x}, {y}, {width}, {height}) are outside screen bounds ({full_screenshot.width}x{full_screenshot.height})'
+                }
+            
+            # Crop the image using PIL
+            from PIL import Image
+            import io
+            
+            # Convert bytes to PIL Image
+            full_image = Image.open(io.BytesIO(full_screenshot.data))
+            
+            # Crop the image according to ROI coordinates
+            roi_image = full_image.crop((x, y, x + width, y + height))
+            
+            # Convert cropped image back to bytes
+            roi_bytes = io.BytesIO()
+            roi_image.save(roi_bytes, format='PNG')
+            roi_data_bytes = roi_bytes.getvalue()
+            
+            # Create a new screenshot entity with the cropped data
+            import uuid
+            from src.domain.entities.screenshot import Screenshot
+            from src.domain.value_objects.timestamp import Timestamp
+            from src.domain.value_objects.file_path import FilePath
+            
+            screenshot_id = str(uuid.uuid4())
+            timestamp = Timestamp.now()
+            file_path = FilePath(f"region_{screenshot_id}.png")
+            
+            # Set metadata for the ROI screenshot
+            metadata = {
+                'manual': True,
+                'capture_method': 'roi_region',
+                'roi': roi_data,
+                'region': {
+                    'left': x,
+                    'top': y,
+                    'right': x + width,
+                    'bottom': y + height,
+                    'width': width,
+                    'height': height
+                },
+                'original_screen_size': {
+                    'width': full_screenshot.width,
+                    'height': full_screenshot.height
+                }
+            }
+            
+            # Create screenshot entity with cropped data
+            screenshot = Screenshot(
+                id=screenshot_id,
+                file_path=file_path,
+                timestamp=timestamp,
+                width=width,
+                height=height,
+                format="PNG",
+                size_bytes=len(roi_data_bytes),
+                metadata=metadata,
+                data=roi_data_bytes
+            )
+            
+            # Save to repository and file system
+            await self.screenshot_service._screenshot_repository.create(screenshot)
+            await self.screenshot_service.save_screenshot(screenshot)
+            
+            print(f"DEBUG: ROI screenshot saved: {screenshot.id} ({width}x{height})")
+            
+            # Convert to API response format
+            return {
+                'success': True,
+                'screenshot': {
+                    'id': screenshot.id,
+                    'timestamp': screenshot.timestamp.value.isoformat(),
+                    'width': screenshot.width,
+                    'height': screenshot.height,
+                    'format': screenshot.format,
+                    'size_bytes': screenshot.size_bytes,
+                    'file_path': str(screenshot.file_path.path),
+                    'metadata': screenshot.metadata
+                }
+            }
+            
+        except Exception as e:
+            print(f"Error capturing ROI region: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                'success': False,
+                'error': str(e)
+            }

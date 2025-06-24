@@ -38,7 +38,7 @@ class RateLimiter:
             'requests_per_day': 10000
         }
         self.endpoint_limits = {
-            '/api/screenshots/trigger': {'requests_per_minute': 10},
+            '/api/screenshots/take': {'requests_per_minute': 10},
             '/api/monitoring/sessions': {'requests_per_minute': 20},
             '/api/analysis/analyze': {'requests_per_minute': 5}
         }

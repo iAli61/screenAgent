@@ -3,7 +3,7 @@ Analysis API Blueprint
 Handles analysis and AI-powered screenshot analysis endpoints
 """
 import asyncio
-from flask import request
+from flask import request, abort
 from flask_restx import Namespace, Resource, fields
 
 from src.interfaces.controllers.analysis_controller import AnalysisController
@@ -84,13 +84,13 @@ class ScreenshotAnalysis(Resource):
         # Validate required fields in test mode
         if current_app.config.get('TESTING', False):
             if not data.get('screenshot_id'):
-                analysis_bp.abort(400, 'screenshot_id is required')
+                abort(400, 'screenshot_id is required')
             
             # Validate analysis_type if provided
             if 'analysis_type' in data:
                 valid_types = ['general', 'text', 'ui_elements', 'changes']
                 if data['analysis_type'] not in valid_types:
-                    analysis_bp.abort(400, f'analysis_type must be one of: {valid_types}')
+                    abort(400, f'analysis_type must be one of: {valid_types}')
         
         container = get_container()
         analysis_controller = container.get(AnalysisController)
@@ -120,13 +120,13 @@ class AnalysisDetail(Resource):
     def get(self, analysis_id):
         """Get specific analysis result"""
         # For now, return not found as this method isn't implemented in the controller
-        analysis_bp.abort(404, f'Analysis {analysis_id} not found')
+        abort(404)
     
     @analysis_bp.doc('delete_analysis')
     def delete(self, analysis_id):
         """Delete analysis result"""
         # For now, return not found as this method isn't implemented in the controller
-        analysis_bp.abort(404, f'Analysis {analysis_id} not found')
+        abort(404)
 
 
 @analysis_bp.route('/compare')
@@ -142,13 +142,13 @@ class ScreenshotComparison(Resource):
         # Validate required fields in test mode
         if current_app.config.get('TESTING', False):
             if not data.get('screenshot1_id'):
-                analysis_bp.abort(400, 'screenshot1_id is required')
+                abort(400)
             if not data.get('screenshot2_id'):
-                analysis_bp.abort(400, 'screenshot2_id is required')
+                abort(400)
             
             # Check if both screenshots are the same
             if data.get('screenshot1_id') == data.get('screenshot2_id'):
-                analysis_bp.abort(400, 'screenshot1_id and screenshot2_id cannot be the same')
+                abort(400)
         
         container = get_container()
         analysis_controller = container.get(AnalysisController)
@@ -163,7 +163,7 @@ class TextExtraction(Resource):
     def post(self):
         """Extract text from screenshot using OCR"""
         # For now, return not implemented
-        analysis_bp.abort(501, 'Text extraction not implemented')
+        abort(501)
 
 
 @analysis_bp.route('/ui-elements')
@@ -172,7 +172,7 @@ class UIElementDetection(Resource):
     def post(self):
         """Detect UI elements in screenshot"""
         # For now, return not implemented
-        analysis_bp.abort(501, 'UI element detection not implemented')
+        abort(501)
 
 
 @analysis_bp.route('/change-detection')
@@ -181,4 +181,4 @@ class ChangeDetection(Resource):
     def post(self):
         """Detect changes between screenshots"""
         # For now, return not implemented
-        analysis_bp.abort(501, 'Change detection not implemented')
+        abort(501)

@@ -3,7 +3,7 @@ Screenshots Blueprint
 Handles screenshot-related endpoints
 """
 import asyncio
-from flask import request, Response
+from flask import request, Response, abort
 from flask_restx import Namespace, Resource, fields
 
 from src.infrastructure.dependency_injection import get_container
@@ -15,6 +15,7 @@ def run_async(coro):
     
     # In test mode, return a mock response instead of running async code
     if current_app.config.get('DISABLE_ASYNC_EXECUTION', False):
+        print("DEBUG: DISABLE_ASYNC_EXECUTION is True, returning mock data")
         return {
             'success': True,
             'screenshots': [],
@@ -33,32 +34,19 @@ def run_async(coro):
         asyncio.set_event_loop(loop)
     
     try:
-        return loop.run_until_complete(coro)
+        print(f"DEBUG: About to run coroutine: {coro}")
+        result = loop.run_until_complete(coro)
+        print(f"DEBUG: Coroutine result type: {type(result)}, size: {len(result) if isinstance(result, bytes) else 'N/A'}")
+        return result
+    except Exception as e:
+        print(f"DEBUG: Exception in run_async: {e}")
+        raise e
     finally:
         # Don't close the loop if it was the default loop
         pass
 
 from src.infrastructure.dependency_injection import get_container
 from src.interfaces.controllers.screenshot_controller import ScreenshotController
-
-
-def run_async(coro):
-    """Helper function to run async coroutines in Flask routes"""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If loop is already running, create a new one
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        # Don't close the loop if it was the default loop
-        pass
 
 # Create namespace for screenshots
 screenshots_bp = Namespace('screenshots', description='Screenshot operations')
@@ -111,27 +99,10 @@ class ScreenshotList(Resource):
         return result
 
 
-@screenshots_bp.route('/trigger')
-class ScreenshotTrigger(Resource):
-    def post(self):
-        """Trigger a new screenshot capture"""
-        container = get_container()
-        screenshot_controller = container.get(ScreenshotController)
-        
-        # Handle requests with or without JSON data
-        try:
-            data = request.get_json(force=True, silent=True) or {}
-        except Exception:
-            data = {}
-            
-        result = run_async(screenshot_controller.capture_full_screen(data))
-        return result
-
-
 @screenshots_bp.route('/take')
 class ScreenshotTake(Resource):
     def post(self):
-        """Take a new screenshot (alias for trigger)"""
+        """Take a new screenshot, optionally using a Region of Interest (ROI)"""
         container = get_container()
         screenshot_controller = container.get(ScreenshotController)
         
@@ -140,7 +111,28 @@ class ScreenshotTake(Resource):
             data = request.get_json(force=True, silent=True) or {}
         except Exception:
             data = {}
+        
+        # Check if ROI parameters are provided
+        if 'roi' in data and isinstance(data['roi'], dict):
+            roi_data = data['roi']
+            required_fields = ['x', 'y', 'width', 'height']
             
+            # Validate ROI parameters
+            if all(field in roi_data for field in required_fields):
+                try:
+                    # Capture screenshot with ROI
+                    print(f"DEBUG: Capturing screenshot with ROI: {roi_data}")
+                    result = run_async(screenshot_controller.capture_roi_region(roi_data))
+                    return result
+                except Exception as e:
+                    print(f"DEBUG: Error capturing ROI screenshot: {e}")
+                    return {"success": False, "error": str(e)}, 500
+            else:
+                missing = [field for field in required_fields if field not in roi_data]
+                return {"success": False, "error": f"Missing ROI fields: {', '.join(missing)}"}, 400
+        
+        # Default: capture full screen if no ROI specified
+        print("DEBUG: Capturing full screen screenshot")
         result = run_async(screenshot_controller.capture_full_screen(data))
         return result
 
@@ -149,24 +141,67 @@ class ScreenshotTake(Resource):
 class ScreenshotPreview(Resource):
     def get(self):
         """Get preview screenshot (returns PNG image data)"""
-        container = get_container()
-        screenshot_controller = container.get(ScreenshotController)
-        
-        result = run_async(screenshot_controller.get_preview({}))
-        
-        if result:
-            return Response(
-                result,
-                mimetype='image/png',
-                headers={
-                    'Cache-Control': 'no-cache',
-                    'Content-Type': 'image/png'
-                }
-            )
-        else:
-            screenshots_bp.abort(404, 'Preview not available')
+        try:
+            container = get_container()
+            screenshot_controller = container.get(ScreenshotController)
+            
+            result = run_async(screenshot_controller.get_preview({}))
+            
+            if result and isinstance(result, bytes):
+                return Response(
+                    result,
+                    mimetype='image/png',
+                    headers={
+                        'Cache-Control': 'no-cache',
+                        'Content-Type': 'image/png'
+                    }
+                )
+            else:
+                # Return error information for debugging
+                return {
+                    'error': 'Preview generation failed',
+                    'result_type': type(result).__name__ if result else 'None',
+                    'result_size': len(result) if isinstance(result, bytes) else 'N/A'
+                }, 500
+        except Exception as e:
+            return {
+                'error': 'Preview endpoint exception',
+                'message': str(e),
+                'type': type(e).__name__
+            }, 500
     
     def head(self):
         """Handle HEAD requests for preview endpoint"""
+        # Flask automatically handles HEAD by calling GET without body
+        pass
+
+
+@screenshots_bp.route('/<string:screenshot_id>')
+class ScreenshotImage(Resource):
+    def get(self, screenshot_id):
+        """Get individual screenshot image by ID"""
+        container = get_container()
+        screenshot_controller = container.get(ScreenshotController)
+        
+        try:
+            # Get screenshot image data
+            image_data = run_async(screenshot_controller.get_screenshot_image(screenshot_id))
+            
+            if image_data:
+                return Response(
+                    image_data,
+                    mimetype='image/png',
+                    headers={
+                        'Cache-Control': 'public, max-age=3600',  # Cache for 1 hour
+                        'Content-Type': 'image/png'
+                    }
+                )
+            else:
+                abort(404, description=f"Screenshot {screenshot_id} not found")
+        except Exception as e:
+            abort(500, description=f"Error retrieving screenshot: {str(e)}")
+
+    def head(self, screenshot_id):
+        """Handle HEAD requests for individual screenshots"""
         # Flask automatically handles HEAD by calling GET without body
         pass

@@ -82,7 +82,7 @@ graph TB
 | GET | `/api/settings` | ✅ Working | ConfigurationController | None |
 | GET | `/api/roi` | ✅ Working | ConfigurationController | None |
 | GET | `/api/preview` | ⚠️ Incomplete | ScreenshotController | Returns binary data inconsistently |
-| POST | `/api/trigger` | ✅ Working | ScreenshotController | None |
+| POST | `/api/take` | ✅ Working | ScreenshotController | None |
 | POST | `/api/analyze` | ✅ Working | AnalysisController | None |
 | POST | `/api/settings` | ✅ Working | ConfigurationController | None |
 | POST | `/api/monitor/settings` | ✅ Working | MonitoringController | Legacy endpoint |
@@ -104,7 +104,7 @@ sequenceDiagram
     participant CaptureService
     participant Repository
 
-    Client->>+Server: POST /api/trigger
+    Client->>+Server: POST /api/take
     Server->>+ScreenshotController: capture_full_screen(data)
     ScreenshotController->>+ScreenshotService: capture_screenshot()
     ScreenshotService->>+CaptureService: capture()

@@ -3,7 +3,7 @@ Configuration API Blueprint
 Handles configuration management endpoints
 """
 import asyncio
-from flask import request
+from flask import request, abort
 from flask_restx import Namespace, Resource, fields
 
 from src.infrastructure.dependency_injection import get_container
@@ -261,11 +261,11 @@ class ConfigurationSet(Resource):
         # Validate required fields in test mode
         if current_app.config.get('TESTING', False):
             if not data.get('key'):
-                config_bp.abort(400, 'key is required')
+                abort(400)
             
             # Check for empty key
             if data.get('key') == '':
-                config_bp.abort(400, 'key cannot be empty')
+                abort(400)
                 
             return {
                 'success': True,

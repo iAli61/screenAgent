@@ -172,7 +172,7 @@ class TestErrorHandlingConsistency:
         """Test 400 errors have consistent format"""
         # Send invalid JSON
         headers = {'Content-Type': 'application/json'}
-        response = client.post('/api/screenshots/trigger',
+        response = client.post('/api/screenshots/take',
                               data='invalid json',
                               headers=headers)
         

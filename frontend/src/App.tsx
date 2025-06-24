@@ -8,6 +8,7 @@ import { ROISelector } from '@/components/features/ROISelector'
 import { Settings } from '@/components/features/Settings'
 import { ErrorBoundary, ToastContainer } from '@/components/ui'
 import { useAppStore } from '@/stores'
+import { ROIProvider } from '@/contexts/ROIContext'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -62,9 +63,11 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
-      <ToastContainer />
-      <ReactQueryDevtools initialIsOpen={false} />
+      <ROIProvider>
+        <AppContent />
+        <ToastContainer />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </ROIProvider>
     </QueryClientProvider>
   )
 }
