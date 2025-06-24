@@ -65,4 +65,24 @@ body {
   .card-subtitle {
     @apply text-sm text-gray-600 mt-1;
   }
+  
+  /* Modal styles */
+  .modal-resizable {
+    resize: both;
+    overflow: auto;
+    min-width: 400px;
+    min-height: 300px;
+    max-width: 98vw;
+    max-height: 95vh;
+  }
+  
+  .modal-resizable::-webkit-resizer {
+    background-color: #e5e7eb;
+    border-radius: 4px;
+  }
+  
+  /* Modal header styles */
+  .modal-header-compact {
+    min-height: 40px;
+  }
 }

@@ -43,8 +43,9 @@ interface AnalysisHistoryResponse {
 
 interface AnalysisRequest {
   screenshotId: string;
-  model: string;
   prompt?: string;
+  provider?: string;
+  model?: string;
   customSettings?: {
     temperature?: number;
     maxTokens?: number;

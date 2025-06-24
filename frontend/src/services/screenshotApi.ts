@@ -30,10 +30,18 @@ interface ScreenshotListResponse {
 }
 
 interface ScreenshotAnalysisResponse {
-  id: string;
-  analysis: string;
-  confidence: number;
-  timestamp: string;
+  success: boolean;
+  analysis_id: string | null;
+  result: {
+    type: string;
+    analysis: string;
+    custom_prompt?: string;
+    llm_enabled?: boolean;
+  } | null;
+  confidence: number | null;
+  timestamp: string | null;
+  processing_time: number | null;
+  error: string | null;
 }
 
 interface UploadResponse {
@@ -154,10 +162,17 @@ export function useAnalyzeScreenshot() {
   const { updateScreenshot } = useScreenshotStore();
 
   return useMutation({
-    mutationFn: ({ id, prompt }: { id: string; prompt?: string }) => 
+    mutationFn: ({ id, prompt, provider, model }: { 
+      id: string; 
+      prompt?: string; 
+      provider?: string; 
+      model?: string; 
+    }) => 
       apiClient.post<ScreenshotAnalysisResponse>(`/api/analysis/analyze`, { 
         screenshot_id: id, 
-        prompt: prompt || "Analyze this screenshot and describe what you see." 
+        prompt: prompt || "Analyze this screenshot and describe what you see.",
+        provider: provider,
+        model: model
       }),
     onMutate: ({ id }) => {
       // Optimistically update status
@@ -170,7 +185,7 @@ export function useAnalyzeScreenshot() {
       updateScreenshot(id, {
         analysis: {
           status: 'completed',
-          result: data.analysis,
+          result: data.result?.analysis || 'Analysis completed',
         }
       });
       

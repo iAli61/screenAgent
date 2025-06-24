@@ -58,5 +58,17 @@ export {
   type AnalysisModel,
 } from './analysisApi';
 
+// Models services
+export {
+  useModels,
+  useProviderInfo,
+  getProviderOptions,
+  getModelOptions,
+  MODELS_QUERY_KEYS,
+  type Provider,
+  type ModelsResponse,
+  type ProviderInfoResponse,
+} from './modelsApi';
+
 // Type exports
 export type { APIResponse } from './apiClient';

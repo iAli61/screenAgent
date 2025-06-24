@@ -27,11 +27,15 @@ class AnalysisController:
             screenshot_id = request_data.get('screenshot_id')
             analysis_type = request_data.get('analysis_type', 'general')
             custom_prompt = request_data.get('prompt')
+            provider = request_data.get('provider')
+            model = request_data.get('model')
             
             if not screenshot_id:
                 return {
                     'success': False,
-                    'error': 'screenshot_id required'
+                    'error': 'Missing required parameter: screenshot_id',
+                    'error_code': 'MISSING_SCREENSHOT_ID',
+                    'details': 'Please provide a valid screenshot_id to analyze'
                 }
             
             # Get screenshot
@@ -39,7 +43,9 @@ class AnalysisController:
             if not screenshot:
                 return {
                     'success': False,
-                    'error': 'Screenshot not found'
+                    'error': f'Screenshot not found: {screenshot_id}',
+                    'error_code': 'SCREENSHOT_NOT_FOUND',
+                    'details': f'No screenshot exists with ID "{screenshot_id}". Please verify the screenshot ID and try again.'
                 }
             
             # Perform analysis based on type
@@ -75,7 +81,9 @@ class AnalysisController:
                 if not compare_screenshot:
                     return {
                         'success': False,
-                        'error': 'Comparison screenshot not found'
+                        'error': f'Comparison screenshot not found: {compare_screenshot_id}',
+                        'error_code': 'COMPARISON_SCREENSHOT_NOT_FOUND',
+                        'details': f'No screenshot exists with ID "{compare_screenshot_id}" for comparison. Please verify the screenshot ID and try again.'
                     }
                 
                 comparison_result = await self.analysis_service.compare_screenshots(
@@ -91,26 +99,133 @@ class AnalysisController:
                 }
             
             else:
-                # Default general analysis
+                # Default general analysis with AI
+                from src.api.llm_api import LLMAnalyzer
+                
+                # Initialize LLM analyzer
+                llm_analyzer = LLMAnalyzer({
+                    'llm_enabled': True,
+                    'llm_model': 'gpt-4o'
+                })
+                
+                analysis_text = None
+                failure_reason = None
+                llm_status = "disabled"
+                
+                if llm_analyzer.is_available():
+                    llm_status = "available"
+                    try:
+                        # Get screenshot image data
+                        screenshot_path = screenshot.file_path.path
+                        if screenshot_path:
+                            with open(screenshot_path, 'rb') as f:
+                                image_data = f.read()
+                            
+                            print(f"Attempting LLM analysis for screenshot {screenshot_id} using provider: {provider or 'auto'}, model: {model or 'default'}...")
+                            
+                            # Perform AI analysis
+                            analysis_text = llm_analyzer.analyze_image(
+                                image_data, 
+                                custom_prompt or "Analyze this screenshot and describe what you see in detail.",
+                                provider=provider,
+                                model=model
+                            )
+                            
+                            if analysis_text:
+                                print(f"✅ LLM analysis successful for screenshot {screenshot_id}")
+                                llm_status = "success"
+                            else:
+                                print(f"⚠️ LLM analysis returned empty result for screenshot {screenshot_id}")
+                                failure_reason = "LLM returned empty/null response - this could indicate API quota limits, content filtering, or processing errors"
+                                llm_status = "empty_response"
+                        else:
+                            failure_reason = "Screenshot file path is None or empty"
+                            llm_status = "invalid_file_path"
+                            
+                    except FileNotFoundError:
+                        failure_reason = f"Screenshot file not found: {screenshot_path}"
+                        llm_status = "file_not_found"
+                        print(f"❌ {failure_reason}")
+                    except PermissionError:
+                        failure_reason = f"Permission denied accessing screenshot file: {screenshot_path}"
+                        llm_status = "permission_denied"
+                        print(f"❌ {failure_reason}")
+                    except Exception as e:
+                        failure_reason = f"LLM analysis failed with exception: {type(e).__name__}: {str(e)}"
+                        llm_status = "exception"
+                        print(f"❌ {failure_reason}")
+                else:
+                    failure_reason = "LLM analyzer is not available - check API keys and configuration"
+                    print(f"⚠️ {failure_reason}")
+                
+                # Provide informative fallback analysis with diagnostic information
+                if not analysis_text:
+                    diagnostic_info = {
+                        'llm_status': llm_status,
+                        'failure_reason': failure_reason,
+                        'available_providers': llm_analyzer.get_available_providers(),
+                        'requested_provider': provider,
+                        'requested_model': model,
+                        'llm_enabled': llm_analyzer.llm_enabled,
+                        'screenshot_path': str(screenshot.file_path.path) if screenshot.file_path.path else 'None'
+                    }
+                    
+                    analysis_text = f"""Screenshot Analysis Fallback for {screenshot_id}
+
+❌ LLM Analysis Failed
+Status: {llm_status}
+Reason: {failure_reason or 'Unknown'}
+Requested Provider: {provider or 'auto'}
+Requested Model: {model or 'default'}
+Available Providers: {', '.join(diagnostic_info['available_providers']) or 'None'}
+LLM Enabled: {diagnostic_info['llm_enabled']}
+
+📋 Basic Analysis:
+This screenshot appears to be a captured image from the system. Without AI analysis, only basic metadata is available.
+Custom prompt was: '{custom_prompt or 'default analysis'}'
+
+🔧 Troubleshooting:
+- Check API keys (AZURE_AI_API_KEY, GITHUB_MODEL_TOKEN, OPENAI_API_KEY)
+- Verify network connectivity
+- Check API quota limits
+- Ensure screenshot file exists and is accessible
+- Verify provider and model parameters
+
+For full AI-powered analysis, please resolve the LLM configuration issues."""
+                
                 result = {
                     'type': 'general',
-                    'message': f'Analysis completed for screenshot {screenshot_id}',
-                    'custom_prompt': custom_prompt
+                    'analysis': analysis_text,
+                    'custom_prompt': custom_prompt,
+                    'provider': provider,
+                    'model': model,
+                    'llm_enabled': llm_analyzer.llm_enabled,
+                    'llm_status': llm_status,
+                    'available_providers': llm_analyzer.get_available_providers(),
+                    'failure_reason': failure_reason if not analysis_text or llm_status != 'success' else None
                 }
             
             return {
                 'success': True,
-                'analysis': {
-                    'screenshot_id': screenshot_id,
-                    'timestamp': datetime.now().isoformat(),
-                    'result': result
-                }
+                'analysis_id': f'analysis_{screenshot_id}_{int(datetime.now().timestamp())}',
+                'result': result,
+                'confidence': 0.9 if analysis_text and llm_status == 'success' else 0.5,
+                'timestamp': datetime.now().isoformat(),
+                'processing_time': 1.0,  # Placeholder
+                'error': None
             }
             
         except Exception as e:
             return {
                 'success': False,
-                'error': str(e)
+                'analysis_id': None,
+                'result': None,
+                'confidence': None,
+                'timestamp': datetime.now().isoformat(),
+                'processing_time': None,
+                'error': f'Analysis failed: {str(e)}',
+                'error_code': 'ANALYSIS_PROCESSING_ERROR',
+                'details': f'An error occurred while processing the screenshot analysis: {type(e).__name__}: {str(e)}'
             }
     
     async def compare_screenshots(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -121,9 +236,17 @@ class AnalysisController:
             threshold = float(request_data.get('threshold', 20.0))
             
             if not screenshot1_id or not screenshot2_id:
+                missing_params = []
+                if not screenshot1_id:
+                    missing_params.append('screenshot1_id')
+                if not screenshot2_id:
+                    missing_params.append('screenshot2_id')
+                
                 return {
                     'success': False,
-                    'error': 'Both screenshot1_id and screenshot2_id required'
+                    'error': f'Missing required parameters: {", ".join(missing_params)}',
+                    'error_code': 'MISSING_REQUIRED_PARAMETERS',
+                    'details': 'Both screenshot1_id and screenshot2_id are required for comparison'
                 }
             
             # Get screenshots
@@ -133,13 +256,17 @@ class AnalysisController:
             if not screenshot1:
                 return {
                     'success': False,
-                    'error': 'First screenshot not found'
+                    'error': f'First screenshot not found: {screenshot1_id}',
+                    'error_code': 'FIRST_SCREENSHOT_NOT_FOUND',
+                    'details': f'No screenshot exists with ID "{screenshot1_id}" for comparison'
                 }
             
             if not screenshot2:
                 return {
                     'success': False,
-                    'error': 'Second screenshot not found'
+                    'error': f'Second screenshot not found: {screenshot2_id}',
+                    'error_code': 'SECOND_SCREENSHOT_NOT_FOUND',
+                    'details': f'No screenshot exists with ID "{screenshot2_id}" for comparison'
                 }
             
             # Perform comparison
@@ -169,7 +296,9 @@ class AnalysisController:
         except Exception as e:
             return {
                 'success': False,
-                'error': str(e)
+                'error': f'Comparison failed: {str(e)}',
+                'error_code': 'COMPARISON_PROCESSING_ERROR',
+                'details': f'An error occurred while comparing screenshots: {type(e).__name__}: {str(e)}'
             }
     
     async def batch_analyze(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -181,7 +310,9 @@ class AnalysisController:
             if not screenshot_ids:
                 return {
                     'success': False,
-                    'error': 'screenshot_ids required'
+                    'error': 'Missing required parameter: screenshot_ids',
+                    'error_code': 'MISSING_SCREENSHOT_IDS',
+                    'details': 'Please provide a list of screenshot_ids to analyze in batch'
                 }
             
             # Get screenshots
@@ -194,7 +325,9 @@ class AnalysisController:
             if not screenshots:
                 return {
                     'success': False,
-                    'error': 'No valid screenshots found'
+                    'error': f'No valid screenshots found from provided IDs: {screenshot_ids}',
+                    'error_code': 'NO_VALID_SCREENSHOTS',
+                    'details': f'None of the provided screenshot IDs ({len(screenshot_ids)} total) could be found in the system'
                 }
             
             # Perform batch analysis
@@ -229,7 +362,9 @@ class AnalysisController:
         except Exception as e:
             return {
                 'success': False,
-                'error': str(e)
+                'error': f'Batch analysis failed: {str(e)}',
+                'error_code': 'BATCH_ANALYSIS_ERROR',
+                'details': f'An error occurred during batch analysis: {type(e).__name__}: {str(e)}'
             }
     
     async def find_similar_screenshots(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -242,7 +377,9 @@ class AnalysisController:
             if not reference_id:
                 return {
                     'success': False,
-                    'error': 'reference_id required'
+                    'error': 'Missing required parameter: reference_id',
+                    'error_code': 'MISSING_REFERENCE_ID',
+                    'details': 'Please provide a reference_id to find similar screenshots'
                 }
             
             # Get reference screenshot
@@ -250,7 +387,9 @@ class AnalysisController:
             if not reference_screenshot:
                 return {
                     'success': False,
-                    'error': 'Reference screenshot not found'
+                    'error': f'Reference screenshot not found: {reference_id}',
+                    'error_code': 'REFERENCE_SCREENSHOT_NOT_FOUND',
+                    'details': f'No screenshot exists with ID "{reference_id}" to use as reference'
                 }
             
             # Get all screenshots as candidates
@@ -291,7 +430,9 @@ class AnalysisController:
         except Exception as e:
             return {
                 'success': False,
-                'error': str(e)
+                'error': f'Similar screenshots search failed: {str(e)}',
+                'error_code': 'SIMILAR_SCREENSHOTS_ERROR',
+                'details': f'An error occurred while searching for similar screenshots: {type(e).__name__}: {str(e)}'
             }
     
     async def generate_thumbnail(self, request_data: Dict[str, Any]) -> bytes:
@@ -327,7 +468,9 @@ class AnalysisController:
             if not screenshot_id:
                 return {
                     'success': False,
-                    'error': 'screenshot_id required'
+                    'error': 'Missing required parameter: screenshot_id',
+                    'error_code': 'MISSING_SCREENSHOT_ID',
+                    'details': 'Please provide a valid screenshot_id to calculate histogram'
                 }
             
             # Get screenshot
@@ -335,7 +478,9 @@ class AnalysisController:
             if not screenshot:
                 return {
                     'success': False,
-                    'error': 'Screenshot not found'
+                    'error': f'Screenshot not found: {screenshot_id}',
+                    'error_code': 'SCREENSHOT_NOT_FOUND',
+                    'details': f'No screenshot exists with ID "{screenshot_id}" for histogram calculation'
                 }
             
             # Calculate histogram
@@ -353,5 +498,7 @@ class AnalysisController:
         except Exception as e:
             return {
                 'success': False,
-                'error': str(e)
+                'error': f'Histogram calculation failed: {str(e)}',
+                'error_code': 'HISTOGRAM_CALCULATION_ERROR',
+                'details': f'An error occurred while calculating histogram: {type(e).__name__}: {str(e)}'
             }

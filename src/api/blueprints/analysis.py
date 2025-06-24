@@ -40,7 +40,9 @@ analysis_request_model = analysis_bp.model('AnalysisRequest', {
     'analysis_type': fields.String(enum=['general', 'text', 'ui_elements', 'changes'], 
                                  description='Type of analysis to perform'),
     'prompt': fields.String(description='Custom analysis prompt'),
-    'compare_with': fields.String(description='Screenshot ID to compare with')
+    'compare_with': fields.String(description='Screenshot ID to compare with'),
+    'provider': fields.String(description='LLM provider to use (azure, github, openai)'),
+    'model': fields.String(description='Specific model to use for analysis')
 })
 
 analysis_result_model = analysis_bp.model('AnalysisResult', {

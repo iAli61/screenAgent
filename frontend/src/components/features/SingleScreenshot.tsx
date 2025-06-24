@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTakeScreenshot, useScreenshots, useDeleteAllScreenshots, useAnalyzeScreenshot } from '../../services/screenshotApi';
 import { useROI } from '../../contexts/ROIContext';
 import { ImageModal } from '../ui/ImageModal';
+import { useScreenshotStore } from '../../stores/useScreenshotStore';
 
 export function SingleScreenshot() {
   const { selectedROI } = useROI();
@@ -9,12 +10,18 @@ export function SingleScreenshot() {
   const deleteAllMutation = useDeleteAllScreenshots();
   const analyzeScreenshotMutation = useAnalyzeScreenshot();
   const { data: screenshotsData, isLoading, error, refetch } = useScreenshots();
+  const { screenshots: storeScreenshots } = useScreenshotStore();
   
   // Modal state
   const [selectedImage, setSelectedImage] = useState<{
     url: string;
     alt: string;
     metadata: any;
+    analysis?: {
+      status: 'pending' | 'completed' | 'error';
+      result?: string;
+      error?: string;
+    };
   } | null>(null);
 
   const handleTakeScreenshot = async () => {
@@ -41,6 +48,10 @@ export function SingleScreenshot() {
   };
 
   const handleImageClick = (screenshot: any) => {
+    // Get analysis data from store if available
+    const storeScreenshot = storeScreenshots.find(s => s.id === screenshot.id);
+    const analysis = storeScreenshot?.analysis;
+    
     setSelectedImage({
       url: `http://localhost:8000/api/screenshots/${screenshot.id}`,
       alt: `Screenshot ${screenshot.id}`,
@@ -50,18 +61,86 @@ export function SingleScreenshot() {
         width: screenshot.width,
         height: screenshot.height,
         size_bytes: screenshot.size_bytes
-      }
+      },
+      analysis: analysis
     });
   };
 
-  const handleAnalyzeImage = async (imageId: string) => {
+  const handleAnalyzeImage = async (imageId: string, prompt?: string, provider?: string, model?: string) => {
     try {
-      const result = await analyzeScreenshotMutation.mutateAsync({ id: imageId });
+      // Update the screenshot status to pending
+      const { updateScreenshot } = useScreenshotStore.getState();
+      updateScreenshot(imageId, {
+        analysis: { status: 'pending' }
+      });
+
+      // Update the modal if this is the currently selected image
+      setSelectedImage(prev => {
+        if (prev && prev.metadata.id === imageId) {
+          return {
+            ...prev,
+            analysis: { status: 'pending' }
+          };
+        }
+        return prev;
+      });
+
+      const result = await analyzeScreenshotMutation.mutateAsync({ 
+        id: imageId, 
+        prompt: prompt || 'Describe what you see in this screenshot in detail.',
+        provider: provider,
+        model: model
+      });
       console.log('Analysis result:', result);
-      // TODO: Add toast notification or show result in a modal
-      alert(`Analysis complete: ${result.analysis || 'Analysis successful'}`);
+      
+      const analysisResult = {
+        status: 'completed' as const,
+        result: result.result?.analysis || 'Analysis completed successfully'
+      };
+      
+      // Update the screenshot with analysis result
+      updateScreenshot(imageId, {
+        analysis: analysisResult
+      });
+      
+      // Update the modal if this is the currently selected image
+      setSelectedImage(prev => {
+        if (prev && prev.metadata.id === imageId) {
+          return {
+            ...prev,
+            analysis: analysisResult
+          };
+        }
+        return prev;
+      });
+      
+      // Trigger a refetch to update the UI
+      refetch();
     } catch (error) {
       console.error('Failed to analyze screenshot:', error);
+      
+      const errorResult = {
+        status: 'error' as const,
+        error: error instanceof Error ? error.message : 'Analysis failed'
+      };
+      
+      // Update screenshot with error status
+      const { updateScreenshot } = useScreenshotStore.getState();
+      updateScreenshot(imageId, {
+        analysis: errorResult
+      });
+      
+      // Update the modal if this is the currently selected image
+      setSelectedImage(prev => {
+        if (prev && prev.metadata.id === imageId) {
+          return {
+            ...prev,
+            analysis: errorResult
+          };
+        }
+        return prev;
+      });
+      
       alert('Failed to analyze screenshot. Please try again.');
     }
   };
@@ -134,7 +213,7 @@ export function SingleScreenshot() {
                     e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY4NzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIGZhaWxlZCB0byBsb2FkPC90ZXh0Pjwvc3ZnPg==';
                   }}
                 />
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 space-y-1">
                   <p className="font-medium">{screenshot.id.slice(0, 8)}...</p>
                   <p>{new Date(screenshot.timestamp).toLocaleString()}</p>
                   <p>{screenshot.width} x {screenshot.height}</p>
@@ -159,6 +238,7 @@ export function SingleScreenshot() {
           imageAlt={selectedImage.alt}
           metadata={selectedImage.metadata}
           onAnalyze={handleAnalyzeImage}
+          analysisData={selectedImage.analysis}
         />
       )}
     </div>

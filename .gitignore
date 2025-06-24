@@ -9,3 +9,4 @@ screenshots
 frontend/node_modules
 frontend/node_modules/*
 temp/temp_screenshot.png
+frontend/dist/assets

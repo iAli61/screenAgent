@@ -69,7 +69,7 @@ class ScreenAgentApp:
             # Get clean architecture services from container
             container = get_container()
             self.screenshot_service = container.get(IScreenshotService)
-            self.monitoring_service = container.get(IMonitoringService)
+            self.monitoring_service = container.get(IMonitoringService) 
             
             # Create Flask app (replaces old custom server)
             from src.api.flask_app import create_app

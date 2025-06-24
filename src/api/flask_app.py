@@ -64,11 +64,13 @@ def create_app(config=None) -> Flask:
     from src.api.blueprints.monitoring import monitoring_bp
     from src.api.blueprints.configuration import config_bp
     from src.api.blueprints.analysis import analysis_bp
+    from src.api.blueprints.models import models_bp
     
     api.add_namespace(screenshots_bp, path='/screenshots')
     api.add_namespace(monitoring_bp, path='/monitoring') 
     api.add_namespace(config_bp, path='/config')
     api.add_namespace(analysis_bp, path='/analysis')
+    api.add_namespace(models_bp, path='/models')
     
     # Setup dependency injection using the existing DI system
     from src.utils.platform_detection import is_wsl, is_windows, is_linux_with_display
