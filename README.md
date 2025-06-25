@@ -6,12 +6,13 @@ A modern, intelligent screen monitoring application that captures and analyzes c
 
 - **🎯 Smart ROI Monitoring**: Interactive region selection with real-time change detection
 - **🤖 AI-Powered Analysis**: Multi-provider AI integration (OpenAI GPT-4 Vision, Azure AI)
+- **✏️ Dynamic Prompt Management**: Editable AI analysis prompts with real-time updates
 - **🌐 Modern Web Interface**: Responsive dashboard with real-time updates and screenshot gallery
 - **📱 Cross-Platform**: Seamless operation on Linux, Windows, and WSL environments
 - **⚙️ Flexible Configuration**: Web-based settings with dynamic updates
 - **⌨️ Keyboard Shortcuts**: Global hotkeys for manual screenshot capture
 - **📊 Real-time Statistics**: Monitor uptime, capture count, and system performance
-- **🏗️ Modular Architecture**: Event-driven design with pluggable storage and capture backends 🎯
+- **🏗️ Modular Architecture**: Event-driven design with pluggable storage and capture backends
 
 
 > 📋 **For comprehensive feature details, system architecture, and design documentation, see [Design.md](./Design.md)**
@@ -77,11 +78,12 @@ A modern, intelligent screen monitoring application that captures and analyzes c
 ### 🖼️ Screenshot Gallery
 - **Grid Layout**: Organized thumbnails with timestamps and metadata
 - **AI Integration**: One-click analysis with custom prompts
+- **Editable Prompts**: Inline editing of analysis prompts with auto-save
 - **Management**: View, download, or delete individual/all screenshots
 
 ### ⚙️ Settings
 - **Monitoring**: Sensitivity, interval, and threshold configuration
-- **AI Options**: Provider selection, model choice, custom prompts
+- **AI Options**: Provider selection, model choice, editable custom prompts
 - **Preferences**: Auto-start, keyboard shortcuts, display options
 
 ## 🌐 REST API Endpoints
@@ -111,6 +113,11 @@ ScreenAgent provides a comprehensive REST API with Swagger documentation at `/do
 - `POST /api/analysis/analyze` - Analyze screenshot with AI
 - `POST /api/analysis/compare` - Compare two screenshots for changes
 - `GET /api/analysis/models` - Get available AI models
+
+### ✏️ Prompt Management
+- `GET /api/prompts/` - Get all available analysis prompts
+- `GET /api/prompts/{prompt_id}` - Get specific prompt by ID
+- `PUT /api/prompts/{prompt_id}` - Update specific prompt text and metadata
 
 > 📚 **Complete API documentation with examples and schemas available at `/docs/` when running the application**
 
@@ -148,7 +155,8 @@ screenAgent/
 │   │   │   ├── screenshots.py # Screenshot management endpoints
 │   │   │   ├── monitoring.py  # ROI monitoring endpoints
 │   │   │   ├── configuration.py # Settings and config endpoints
-│   │   │   └── analysis.py    # AI analysis endpoints
+│   │   │   ├── analysis.py    # AI analysis endpoints
+│   │   │   └── prompts.py     # 🆕 AI prompt management endpoints
 │   │   ├── middleware/        # Request/response middleware
 │   │   │   ├── error_handler.py # Centralized error handling
 │   │   │   ├── logging_middleware.py # Request logging
@@ -175,7 +183,8 @@ screenAgent/
 ├── frontend/                  # 🆕 Modern React frontend
 │   ├── src/                   # React source code
 │   │   ├── components/        # Reusable UI components
-│   │   ├── services/          # API client services
+│   │   │   └── ui/            # UI components including PromptEditor
+│   │   ├── services/          # API client services (including promptsApi)
 │   │   └── stores/            # State management
 │   ├── package.json           # Node.js dependencies
 │   └── vite.config.ts         # Build configuration
@@ -194,7 +203,9 @@ screenAgent/
 │   ├── REFACTORING_PLAN.md   # Flask migration plan and progress
 │   └── CLEAN_ARCHITECTURE_MIGRATION_SUCCESS.md # Migration summary
 ├── config/                    # Configuration files
-│   └── screen_agent_config.json # Application configuration
+│   ├── screen_agent_config.json # Application configuration
+│   └── prompts/               # 🆕 AI analysis prompts
+│       └── image_analysis.json # Editable analysis prompts with metadata
 └── requirements.txt          # Python dependencies
 ```
 
@@ -249,6 +260,7 @@ ScreenAgent supports multiple AI providers for intelligent screenshot analysis:
 - Text extraction and UI element identification  
 - Anomaly detection and automated insights
 - Contextual analysis of screen activities
+- **Editable Custom Prompts**: Real-time prompt editing with auto-save functionality
 
 > 🤖 **For complete AI integration details and configuration, see [Design.md](./Design.md#ai-integration)**
 

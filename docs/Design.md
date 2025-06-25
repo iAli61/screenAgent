@@ -8,6 +8,7 @@
 5. [Data Flow](#data-flow)
 6. [Platform Support](#platform-support)
 7. [AI Integration](#ai-integration)
+   - [Prompt Management System](#prompt-management-system)
 8. [Web Interface](#web-interface)
 9. [Configuration System](#configuration-system)
 10. [Error Handling & Reliability](#error-handling--reliability)
@@ -311,7 +312,7 @@ def create_app(config=None) -> Flask:
 - **Responsibilities**:
   - Multiple AI provider support
   - Image encoding and processing
-  - Prompt management
+  - Dynamic prompt management with real-time updates
   - Response parsing and formatting
 
 ```python
@@ -320,6 +321,22 @@ class LLMAnalyzer:
     - _setup_azure_client()
     - _setup_openai_client()
     - _encode_image()
+```
+
+#### **Prompts Blueprint** (`prompts.py`)
+- **Purpose**: Dynamic prompt management API
+- **Responsibilities**:
+  - CRUD operations for analysis prompts
+  - Configuration file persistence 
+  - Validation and error handling
+  - Swagger documentation integration
+
+```python
+class PromptsService:
+    - get_prompts()
+    - update_prompt()
+    - get_prompt()
+    - _ensure_config_exists()
 ```
 
 ### 3. Web Interface
@@ -495,6 +512,49 @@ class LLMAnalyzer:
 - **UI Analysis**: Button, form, and interface element identification
 - **Anomaly Detection**: Unusual patterns or errors
 
+### Prompt Management System
+
+ScreenAgent features a dynamic prompt management system that allows users to create, edit, and customize AI analysis prompts in real-time.
+
+#### **Configuration Structure**
+```json
+{
+  "prompts": {
+    "general": {
+      "id": "general",
+      "name": "📝 General Description",
+      "text": "Describe what you see in this screenshot in detail.",
+      "description": "A general description of the screenshot content"
+    },
+    "ui_elements": {
+      "id": "ui_elements", 
+      "name": "🎯 UI Elements Analysis",
+      "text": "Identify all UI elements, buttons, menus, and interface components visible in this screenshot.",
+      "description": "Analyzes user interface elements and components"
+    }
+  }
+}
+```
+
+#### **API Endpoints**
+- `GET /api/prompts/` - Retrieve all available prompts
+- `GET /api/prompts/{prompt_id}` - Get specific prompt by ID
+- `PUT /api/prompts/{prompt_id}` - Update prompt text and metadata
+
+#### **Frontend Integration**
+- **Dynamic Loading**: Prompts loaded from API on modal open
+- **Inline Editing**: PromptEditor component with save/cancel functionality
+- **Real-time Updates**: Changes immediately available for analysis
+- **Visual Feedback**: Indicates unsaved changes and loading states
+- **Fallback Support**: Uses hardcoded prompts if API is unavailable
+
+#### **Key Features**
+- **Persistent Storage**: Prompts saved to `config/prompts/image_analysis.json`
+- **Type Safety**: Full TypeScript interfaces for frontend integration
+- **Error Handling**: Graceful degradation with fallback prompts
+- **User Experience**: Compact editor with hover effects and auto-save
+- **Extensibility**: Easy to add new prompt categories and templates
+
 ## Web Interface
 
 ### Technology Stack
@@ -506,7 +566,7 @@ class LLMAnalyzer:
 - **Testing**: pytest with Flask test client integration
 
 ### Flask API Architecture
-- **Blueprints**: Modular route organization (screenshots, monitoring, configuration, analysis)
+- **Blueprints**: Modular route organization (screenshots, monitoring, configuration, analysis, prompts)
 - **Middleware**: Error handling, validation, security headers, logging
 - **Models**: Swagger models for automatic API documentation
 - **DI Integration**: Direct container access replacing Flask-Injector
@@ -531,7 +591,8 @@ class LLMAnalyzer:
 - **Configuration**: Sensitivity, interval, threshold settings
 
 #### Settings Tab
-- **AI Configuration**: Provider selection, API keys, prompts
+- **AI Configuration**: Provider selection, API keys, editable prompts
+- **Prompt Management**: Inline editing of analysis prompts with auto-save
 - **Monitoring Options**: Auto-start, keyboard shortcuts
 - **Display Preferences**: Theme, gallery size, refresh rate
 
@@ -547,7 +608,8 @@ class LLMAnalyzer:
 1. **Runtime Changes**: Web interface modifications
 2. **Environment Variables**: `OPENAI_API_KEY`, `AZURE_AI_ENDPOINT`, etc.
 3. **Config File**: `screen_agent_config.json`
-4. **Defaults**: Built-in fallback values
+4. **Prompt Configuration**: `config/prompts/image_analysis.json` 
+5. **Defaults**: Built-in fallback values
 
 ### Configuration Schema
 ```json

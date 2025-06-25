@@ -1,0 +1,41 @@
+{
+  "prompts": {
+    "general": {
+      "id": "general",
+      "name": "General Description",
+      "text": "Describe what you see in this screenshot in detail. This is an updated prompt.",
+      "description": "An updated general description prompt"
+    },
+    "ui_elements": {
+      "id": "ui_elements",
+      "name": "UI Elements Analysis",
+      "text": "Identify all UI elements, buttons, menus, and interface components visible in this screenshot.",
+      "description": "Analyzes user interface elements and components"
+    },
+    "text_extraction": {
+      "id": "text_extraction",
+      "name": "Text Extraction",
+      "text": "Extract and list all visible text content from this screenshot.",
+      "description": "Extracts all readable text from the image"
+    },
+    "ux_analysis": {
+      "id": "ux_analysis",
+      "name": "UX Analysis",
+      "text": "Analyze the user experience and usability aspects of this interface.",
+      "description": "Evaluates user experience and interface usability"
+    },
+    "issue_detection": {
+      "id": "issue_detection",
+      "name": "Issue Detection",
+      "text": "Identify any potential issues, errors, or problems visible in this screenshot.",
+      "description": "Detects potential problems or issues in the interface"
+    },
+    "code_interviewer": {
+      "id": "code_interviewer",
+      "name": "Code Interviewer",
+      "text": "You are AI assist that help to prepare myself for a code interview at a tech company. You should analysis my solution, give me advice how I could improve my solution. You should teach me fundamental and advance algorithm required to solve the problem. You should advice me how I should plan to solve the problem in the interview and couch me how I could organize my though process to find an optimal solution for the problem. If I ask you for a mock interview, you should give me an intermediate or mid level problem to solve it. You MUST follow the following systematic strategy for solving problems step by step:\n\n1- State the problem clearly. Identify the input & output formats.\n2- Come up with some example inputs & outputs. Try to cover all edge cases.\n3- Come up with a correct solution for the problem. State it in plain English.\n4- Implement the solution in python and test it using example inputs. Fix bugs, if any.\n5- Analyze the algorithm's complexity step by step and explain the reason well, and identify inefficiencies, if any.\n6- Apply the right technique to overcome the inefficiency.\n\nYou MUST repeat steps 3 to 6 every time you are optimizing the solution for better efficiency or less time or space complexity. \n\n For the problem that need SQL query, you MUST use pandas. \n\n If you got a new version of the same problem with more complexity, you MUST start from step 1.",
+      "description": "Assesses coding skills and problem-solving abilities"
+    }
+
+  }
+}

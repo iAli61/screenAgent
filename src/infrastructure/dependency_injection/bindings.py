@@ -21,6 +21,9 @@ from src.infrastructure.repositories.memory_screenshot_repository import MemoryS
 from src.infrastructure.repositories.json_configuration_repository import JsonConfigurationRepository
 from src.infrastructure.capture.capture_service_impl import CaptureServiceImpl
 
+# Controllers
+from src.interfaces.controllers.configuration_controller import ConfigurationController
+
 # New storage infrastructure
 from src.infrastructure.storage.storage_factory import StorageFactory, StorageManager
 from src.infrastructure.storage.storage_strategy import IStorageFactory
@@ -90,6 +93,9 @@ class ServiceBindings:
         container.register_singleton(IScreenshotService, ScreenshotService)
         container.register_singleton(IMonitoringService, MonitoringService)
         container.register_singleton(IAnalysisService, AnalysisService)
+        
+        # Controllers
+        container.register_singleton(ConfigurationController, ConfigurationController)
     
     @staticmethod
     def configure_development(container: DIContainer, config: Dict[str, Any]):
@@ -138,6 +144,9 @@ class ServiceBindings:
         container.register_singleton(IScreenshotService, ScreenshotService)
         container.register_singleton(IMonitoringService, MonitoringService)
         container.register_singleton(IAnalysisService, AnalysisService)
+        
+        # Controllers
+        container.register_singleton(ConfigurationController, ConfigurationController)
     
     @staticmethod
     def configure_testing(container: DIContainer, config: Dict[str, Any]):

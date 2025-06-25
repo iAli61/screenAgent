@@ -1,6 +1,18 @@
 // Service exports for easy importing
 export { apiClient, APIClient, APIError } from './apiClient';
 
+// Prompts services
+export {
+  usePrompts,
+  usePrompt,
+  useUpdatePrompt,
+  updatePrompt,
+  fetchPrompts,
+  type Prompt,
+  type PromptsResponse,
+  type PromptUpdate,
+} from './promptsApi';
+
 // Screenshot services
 export {
   useScreenshots,

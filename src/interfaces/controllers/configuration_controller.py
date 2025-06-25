@@ -120,6 +120,70 @@ class ConfigurationController:
                 'error': str(e)
             }
     
+    async def get_roi_config(self) -> Dict[str, Any]:
+        """Get current ROI configuration"""
+        try:
+            roi = await self.configuration_repository.get_config("roi")
+            
+            return {
+                'success': True,
+                'roi': roi or [0, 0, 1920, 1080]  # Default ROI if none set
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    async def update_roi_config(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update ROI configuration"""
+        try:
+            roi_data = request_data.get('roi')
+            
+            if not roi_data or not isinstance(roi_data, list) or len(roi_data) != 4:
+                return {
+                    'success': False,
+                    'error': 'ROI data must be an array of 4 numbers [x, y, width, height]'
+                }
+            
+            x, y, width, height = roi_data
+            
+            # Validate ROI values
+            if not all(isinstance(val, (int, float)) and val >= 0 for val in roi_data):
+                return {
+                    'success': False,
+                    'error': 'ROI values must be non-negative numbers'
+                }
+            
+            if width <= 0 or height <= 0:
+                return {
+                    'success': False,
+                    'error': 'ROI width and height must be positive'
+                }
+            
+            # Save ROI configuration
+            success = await self.configuration_repository.set_config("roi", roi_data)
+            
+            if success:
+                return {
+                    'success': True,
+                    'message': 'ROI configuration updated successfully',
+                    'roi': roi_data,
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': 'Failed to save ROI configuration'
+                }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
     async def validate_configuration(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate configuration without saving"""
         try:

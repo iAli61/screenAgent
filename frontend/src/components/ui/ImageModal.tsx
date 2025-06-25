@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useModels, getProviderOptions, getModelOptions } from '../../services/modelsApi';
+import { fetchPrompts, Prompt } from '../../services/promptsApi';
+import { PromptEditor } from './PromptEditor';
 
 interface AnalysisData {
   status: 'pending' | 'completed' | 'error';
@@ -32,11 +34,22 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   
+  // State for prompts management
+  const [prompts, setPrompts] = useState<Record<string, Prompt>>({});
+  const [promptsLoading, setPromptsLoading] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState<string | null>(null);
+  
   // Fetch available models and providers
   const { data: modelsData, isLoading: modelsLoading } = useModels();
 
   // Get the prompt text based on selection
   const getPromptText = (promptType: string) => {
+    // If we have prompts from API, use them
+    if (prompts[promptType]?.text) {
+      return prompts[promptType].text;
+    }
+    
+    // Fallback to hardcoded prompts if API is not available
     switch (promptType) {
       case 'general':
         return 'Describe what you see in this screenshot in detail.';
@@ -53,6 +66,20 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
     }
   };
 
+  // Load prompts from API
+  const loadPrompts = async () => {
+    setPromptsLoading(true);
+    try {
+      const response = await fetchPrompts();
+      setPrompts(response.prompts);
+    } catch (error) {
+      console.error('Failed to load prompts:', error);
+      // Keep using fallback prompts
+    } finally {
+      setPromptsLoading(false);
+    }
+  };
+
   // Handler for analyzing with prompt
   const handleAnalyzeWithPrompt = (screenshotId: string) => {
     if (onAnalyze) {
@@ -66,6 +93,13 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
   
   // Get available model options for selected provider
   const modelOptions = getModelOptions(selectedProvider, modelsData);
+  
+  // Load prompts when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadPrompts();
+    }
+  }, [isOpen]);
   
   // Set default provider when data loads
   useEffect(() => {
@@ -213,12 +247,35 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                 🤖 AI Analysis
               </h3>
               
-              {/* Compact Prompt Selection Section at the top */}
+              {/* Compact Analysis Configuration Section */}
               <div className="bg-white p-3 rounded-lg border mb-4">
                 <div className="flex flex-col gap-3">
-                  {/* Provider and Model Selection Row */}
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  {/* Analysis Prompt with Provider, Model, and Button in one row */}
+                  <div className="flex flex-col lg:flex-row lg:items-end gap-3">
                     <div className="flex-1">
+                      <label className="text-xs font-medium text-gray-600 block mb-1">Analysis Prompt:</label>
+                      <select
+                        value={selectedPrompt}
+                        onChange={(e) => setSelectedPrompt(e.target.value)}
+                        className="w-full p-2 text-sm border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={promptsLoading}
+                      >
+                        {promptsLoading ? (
+                          <option>Loading prompts...</option>
+                        ) : (
+                          <>
+                            {Object.values(prompts).map(prompt => (
+                              <option key={prompt.id} value={prompt.id}>
+                                {prompt.name}
+                              </option>
+                            ))}
+                            <option value="custom">✏️ Custom Prompt</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                    
+                    <div className="flex-1 lg:flex-none lg:w-32">
                       <label className="text-xs font-medium text-gray-600 block mb-1">Provider:</label>
                       <select
                         value={selectedProvider}
@@ -227,7 +284,7 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                         disabled={modelsLoading}
                       >
                         {modelsLoading ? (
-                          <option>Loading providers...</option>
+                          <option>Loading...</option>
                         ) : (
                           providerOptions.map(provider => (
                             <option key={provider.value} value={provider.value}>
@@ -238,7 +295,7 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                       </select>
                     </div>
                     
-                    <div className="flex-1">
+                    <div className="flex-1 lg:flex-none lg:w-40">
                       <label className="text-xs font-medium text-gray-600 block mb-1">Model:</label>
                       <select
                         value={selectedModel}
@@ -247,7 +304,7 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                         disabled={modelsLoading || !selectedProvider}
                       >
                         {modelOptions.length === 0 ? (
-                          <option>No models available</option>
+                          <option>No models</option>
                         ) : (
                           modelOptions.map(model => (
                             <option key={model.value} value={model.value}>
@@ -257,32 +314,14 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                         )}
                       </select>
                     </div>
-                  </div>
-                  
-                  {/* Prompt Selection Row */}
-                  <div className="flex flex-col lg:flex-row lg:items-end gap-3">
-                    <div className="flex-1">
-                      <label className="text-xs font-medium text-gray-600 block mb-1">Analysis Prompt:</label>
-                      <select
-                        value={selectedPrompt}
-                        onChange={(e) => setSelectedPrompt(e.target.value)}
-                        className="w-full p-2 text-sm border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="general">📝 General Description</option>
-                        <option value="ui_elements">🎯 UI Elements Analysis</option>
-                        <option value="text_extraction">📄 Text Extraction</option>
-                        <option value="ux_analysis">👤 UX Analysis</option>
-                        <option value="issue_detection">🐛 Issue Detection</option>
-                        <option value="custom">✏️ Custom Prompt</option>
-                      </select>
-                    </div>
                     
-                    {/* Analyze Button */}
+                    {/* Small Analyze Button with Send Icon */}
                     {metadata && onAnalyze && (
                       <div>
                         <button
                           onClick={() => handleAnalyzeWithPrompt(metadata.id)}
-                          className="btn btn-primary text-sm px-4 py-2"
+                          className="inline-flex items-center justify-center p-2 rounded-md bg-blue-600 text-white border border-transparent shadow-sm hover:bg-blue-700 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                          title={analysisData?.status === 'pending' ? 'Analyzing...' : 'Analyze Screenshot'}
                           disabled={
                             analysisData?.status === 'pending' || 
                             (selectedPrompt === 'custom' && !customPrompt.trim()) ||
@@ -291,7 +330,16 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                             modelsLoading
                           }
                         >
-                          {analysisData?.status === 'pending' ? '⏳ Analyzing...' : '🤖 Analyze'}
+                          {analysisData?.status === 'pending' ? (
+                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                          )}
                         </button>
                       </div>
                     )}
@@ -311,10 +359,40 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                   </div>
                 )}
                 
-                {/* Show selected prompt preview when not custom */}
-                {selectedPrompt !== 'custom' && (
-                  <div className="mt-2 text-xs text-gray-600 italic">
-                    "{getPromptText(selectedPrompt)}"
+                {/* Show prompt editor for API prompts */}
+                {selectedPrompt !== 'custom' && prompts[selectedPrompt] && editingPrompt === selectedPrompt && (
+                  <div className="mt-3">
+                    <PromptEditor
+                      prompt={prompts[selectedPrompt]}
+                      onSave={(updatedPrompt) => {
+                        setPrompts(prev => ({
+                          ...prev,
+                          [updatedPrompt.id]: updatedPrompt
+                        }));
+                        setEditingPrompt(null);
+                      }}
+                      onCancel={() => setEditingPrompt(null)}
+                    />
+                  </div>
+                )}
+                
+                {/* Show selected prompt preview when not custom and not editing */}
+                {selectedPrompt !== 'custom' && editingPrompt !== selectedPrompt && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="text-xs text-gray-600 italic flex-1">
+                      "{getPromptText(selectedPrompt)}"
+                    </div>
+                    {prompts[selectedPrompt] && (
+                      <button
+                        onClick={() => setEditingPrompt(selectedPrompt)}
+                        className="ml-2 p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200"
+                        title="Edit this prompt"
+                      >
+                        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

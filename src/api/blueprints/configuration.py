@@ -289,3 +289,28 @@ class ConfigurationSet(Resource):
                 'error': str(e),
                 'message': 'Failed to update configuration'
             }
+
+
+@config_bp.route('/config/roi')
+class ROIConfiguration(Resource):
+    
+    @config_bp.doc('get_roi_config')
+    def get(self):
+        """Get current ROI configuration"""
+        from src.interfaces.controllers.configuration_controller import ConfigurationController
+        container = get_container()
+        config_controller = container.get(ConfigurationController)
+        
+        result = run_async(config_controller.get_roi_config())
+        return result
+    
+    @config_bp.doc('update_roi_config')
+    def put(self):
+        """Update ROI configuration"""
+        from src.interfaces.controllers.configuration_controller import ConfigurationController
+        container = get_container()
+        config_controller = container.get(ConfigurationController)
+        
+        data = request.get_json()
+        result = run_async(config_controller.update_roi_config(data))
+        return result
