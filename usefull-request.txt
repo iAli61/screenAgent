@@ -1,0 +1,19 @@
+curl -X POST "http://localhost:8000/api/analysis/analyze" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "screenshot_id": "e4a37f47-cef9-48f6-9c21-a81ccaf59980",
+    "prompt": "Analyze this image",
+    "provider": "azure",
+    "model": "gpt-4o"
+  }'
+
+curl -X POST "http://localhost:8000/api/analysis/analyze" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "screenshot_id": "e4a37f47-cef9-48f6-9c21-a81ccaf59980",
+    "prompt": "What do you see?",
+    "provider": "github", 
+    "model": "o3"
+  }'
+
+curl -s http://localhost:8000/api/screenshots/screenshots | jq '.screenshots[0].id' 2>/dev/null || curl -s http://localhost:8000/api/screenshots/screenshots
