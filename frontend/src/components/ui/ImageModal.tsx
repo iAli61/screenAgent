@@ -437,7 +437,21 @@ export function ImageModal({ isOpen, onClose, imageUrl, imageAlt, metadata, onAn
                     {/* Analysis Result */}
                     {analysisData.result && (
                       <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Analysis Result:</h5>
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="text-sm font-medium text-gray-700">Analysis Result:</h5>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(analysisData.result || '');
+                              // You could add a toast notification here for feedback
+                            }}
+                            className="inline-flex items-center justify-center p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200 hover:scale-105"
+                            title="Copy analysis result to clipboard"
+                          >
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+                        </div>
                         <div className="bg-gray-50 p-3 rounded border text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
                           {analysisData.result}
                         </div>

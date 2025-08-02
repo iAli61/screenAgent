@@ -280,8 +280,6 @@ class LLMAnalyzer:
             
             kwargs = {
                 'messages': messages,
-                'max_tokens': 500,
-                'temperature': 0.3
             }
             
             # Add model if specified
@@ -372,8 +370,6 @@ class LLMAnalyzer:
                         ]
                     }
                 ],
-                max_tokens=500,
-                temperature=0.3
             )
             
             if response.choices:
